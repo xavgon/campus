@@ -1,0 +1,354 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  --color-campus-primary: #f5c518;
+  --color-campus-primary-dark: #d4a800;
+  --color-campus-primary-soft: #f5c5181a;
+  --color-campus-secondary: #1a1a1a;
+  --color-campus-accent: #b8b8b8;
+  --color-campus-surface: #0f0f0f;
+  --color-campus-surface-elevated: #171717;
+  --color-campus-surface-card: #1c1c1c;
+  --color-campus-surface-dark: #080808;
+  --color-campus-muted: #8a8a8a;
+  --color-campus-border: #2a2a2a;
+  --color-campus-border-strong: #3d3d3d;
+  --color-campus-foreground: #f5f5f5;
+  --color-campus-on-primary: #0a0a0a;
+  --color-campus-danger: #f87171;
+  --color-campus-danger-soft: #450a0a80;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply m-0 min-h-screen bg-campus-surface text-campus-foreground antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer utilities {
+  .campus-bg-image {
+    animation: campus-bg-fade 0.65s ease-out both;
+  }
+
+  .campus-triangle-mesh {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    overflow: hidden;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.45;
+  }
+
+  .campus-triangle-mesh__svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 100%;
+    min-height: 100%;
+  }
+
+  .campus-panel {
+    @apply relative overflow-hidden rounded-none border border-campus-border/80 bg-campus-surface-card/90 backdrop-blur-md;
+    border-top-color: rgb(245 197 24 / 0.22);
+    box-shadow:
+      0 0 0 1px rgb(245 197 24 / 0.06),
+      0 0 32px -12px rgb(245 197 24 / 0.08),
+      0 24px 48px -16px rgb(0 0 0 / 0.65);
+  }
+
+  .campus-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto auto 0;
+    z-index: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(245 197 24 / 0.12) 20%,
+      rgb(245 197 24 / 0.4) 50%,
+      rgb(245 197 24 / 0.12) 80%,
+      transparent 100%
+    );
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .campus-panel::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -10%;
+    z-index: 0;
+    width: 50%;
+    height: 60%;
+    background: radial-gradient(ellipse at center, rgb(245 197 24 / 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .campus-panel > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .campus-feature-card {
+    @apply relative overflow-hidden rounded-none border border-white/10 bg-black/30 px-4 py-3 pl-4 backdrop-blur-sm;
+    box-shadow:
+      inset 2px 0 0 rgb(245 197 24 / 0.35),
+      inset 8px 0 20px -14px rgb(245 197 24 / 0.08);
+  }
+
+  .campus-feature-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 0;
+    width: 1px;
+    background: linear-gradient(
+      180deg,
+      rgb(245 197 24 / 0.45) 0%,
+      rgb(245 197 24 / 0.15) 50%,
+      transparent 100%
+    );
+    box-shadow: none;
+    pointer-events: none;
+  }
+
+  .campus-feature-card > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .campus-nav-header {
+    @apply relative overflow-visible;
+    border-bottom: 1px solid rgb(255 255 255 / 0.06);
+  }
+
+  .campus-nav-header::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(245 197 24 / 0.08) 22%,
+      rgb(245 197 24 / 0.22) 50%,
+      rgb(245 197 24 / 0.08) 78%,
+      transparent 100%
+    );
+    pointer-events: none;
+  }
+
+  .campus-nav-track {
+    @apply relative flex items-center gap-1 pb-0.5 sm:gap-2;
+  }
+
+  .campus-nav-track--scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .campus-nav-track--scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .campus-nav-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: rgb(245 197 24 / 0.5);
+    opacity: 0;
+    transition:
+      transform 0.45s cubic-bezier(0.33, 1, 0.68, 1),
+      width 0.45s cubic-bezier(0.33, 1, 0.68, 1),
+      opacity 0.25s ease;
+    will-change: transform, width;
+  }
+
+  .campus-nav-indicator--visible {
+    opacity: 1;
+  }
+
+  .campus-nav-link {
+    @apply relative z-10 inline-flex items-center px-3 py-2 text-sm font-medium text-campus-muted;
+    transition: color 0.3s ease;
+  }
+
+  .campus-nav-link:hover {
+    @apply text-campus-foreground;
+  }
+
+  .campus-nav-link__label {
+    @apply relative leading-tight;
+  }
+
+  .campus-nav-link--active {
+    @apply text-campus-primary;
+  }
+
+  .campus-nav-user {
+    position: relative;
+    padding-left: 0.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .campus-nav-user {
+      margin-left: 0.25rem;
+      padding-left: 0.75rem;
+      border-left: 1px solid rgb(255 255 255 / 0.08);
+    }
+  }
+
+  .campus-modal-root {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    isolation: isolate;
+  }
+
+  .campus-modal-backdrop {
+    background: rgb(0 0 0 / 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    animation: campus-modal-fade 0.3s ease-out both;
+  }
+
+  .campus-modal-center {
+    z-index: 1;
+  }
+
+  .campus-modal-panel {
+    max-height: min(90vh, 640px);
+    overflow-y: auto;
+    animation: campus-modal-enter 0.38s cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+
+  .campus-route-enter {
+    animation: campus-route-enter 0.42s cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+
+  .campus-aside-enter {
+    animation: campus-aside-enter 0.48s cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+
+  .campus-page-enter {
+    animation: campus-page-enter 0.5s ease-out both;
+  }
+
+  .campus-stagger-1 {
+    animation-delay: 0.06s;
+  }
+  .campus-stagger-2 {
+    animation-delay: 0.12s;
+  }
+  .campus-stagger-3 {
+    animation-delay: 0.18s;
+  }
+}
+
+@keyframes campus-bg-fade {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes campus-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes campus-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes campus-route-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes campus-aside-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes campus-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .campus-bg-image,
+  .campus-route-enter,
+  .campus-aside-enter,
+  .campus-page-enter {
+    animation: none;
+  }
+
+  .campus-nav-indicator {
+    transition: none;
+  }
+
+  .campus-modal-backdrop,
+  .campus-modal-panel {
+    animation: none;
+  }
+
+  .campus-triangle-mesh {
+    mix-blend-mode: normal;
+    opacity: 0.5;
+  }
+}

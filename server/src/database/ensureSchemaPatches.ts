@@ -1,0 +1,38 @@
+import { ensureDefaultCategories } from '../models/category.model';
+import { getPool } from './pool';
+import { DEFAULT_ADMIN_EMAIL } from './seedAdmin';
+
+/** Alterações incrementais ao schema (idempotentes). */
+export const ensureSchemaPatches = async (): Promise<void> => {
+  const pool = getPool();
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'user'
+  `);
+
+  await pool.query(
+    `UPDATE users SET role = 'admin' WHERE email = $1`,
+    [DEFAULT_ADMIN_EMAIL.toLowerCase()],
+  );
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS streams (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      status VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+      host_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      scheduled_at TIMESTAMPTZ,
+      started_at TIMESTAMPTZ,
+      ended_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status)
+  `);
+
+  await ensureDefaultCategories();
+};

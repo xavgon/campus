@@ -1,0 +1,22 @@
+export type PodcastStatus = 'published' | 'processing' | 'draft';
+
+export type PodcastSort = 'newest' | 'oldest' | 'title-asc' | 'title-desc';
+
+export interface Podcast {
+  id: string;
+  title: string;
+  description: string;
+  categoryId: string;
+  categoryName: string;
+  coverUrl?: string;
+  durationSeconds: number;
+  status: PodcastStatus;
+  createdAt: string;
+  playCount?: number;
+}
+
+export interface PodcastLibraryFilters {
+  search: string;
+  categoryId: string;
+  sort: PodcastSort;
+}

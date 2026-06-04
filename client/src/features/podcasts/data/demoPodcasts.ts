@@ -1,0 +1,47 @@
+import type { Podcast } from '@/features/podcasts/types/podcast';
+
+/** Episódios de exemplo até existir GET /api/podcasts (Módulo 2) */
+export const DEMO_PODCASTS: Podcast[] = [
+  {
+    id: 'demo-1',
+    title: 'Introdução à física quântica',
+    description: 'Conceitos base para alunos do ensino secundário.',
+    categoryId: '2',
+    categoryName: 'Ciências',
+    durationSeconds: 1240,
+    status: 'published',
+    createdAt: '2026-05-28T10:00:00.000Z',
+    playCount: 128,
+  },
+  {
+    id: 'demo-2',
+    title: 'Português: ortografia em 15 minutos',
+    description: 'Regras práticas e exercícios rápidos.',
+    categoryId: '4',
+    categoryName: 'Línguas',
+    durationSeconds: 900,
+    status: 'published',
+    createdAt: '2026-05-20T14:30:00.000Z',
+    playCount: 56,
+  },
+  {
+    id: 'demo-3',
+    title: 'História de Angola — independência',
+    description: 'Cronologia e figuras-chave do período.',
+    categoryId: '3',
+    categoryName: 'História',
+    durationSeconds: 2100,
+    status: 'processing',
+    createdAt: '2026-06-01T09:15:00.000Z',
+  },
+  {
+    id: 'demo-4',
+    title: 'Programação com Python (rascunho)',
+    description: 'Primeiro episódio da série de tecnologia.',
+    categoryId: '5',
+    categoryName: 'Tecnologia',
+    durationSeconds: 0,
+    status: 'draft',
+    createdAt: '2026-06-03T18:00:00.000Z',
+  },
+];

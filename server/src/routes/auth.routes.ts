@@ -1,0 +1,11 @@
+import { Router } from 'express';
+import * as authController from '../controllers/auth.controller';
+import { asyncHandler } from '../middleware/asyncHandler';
+import { requireAuth } from '../middleware/auth.middleware';
+
+export const authRouter = Router();
+
+authRouter.post('/register', asyncHandler(authController.register));
+authRouter.post('/login', asyncHandler(authController.login));
+authRouter.post('/forgot-password', asyncHandler(authController.forgotPassword));
+authRouter.get('/profile', requireAuth, asyncHandler(authController.getProfile));

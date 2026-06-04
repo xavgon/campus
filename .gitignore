@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Uploads (conteúdo gerado)
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Electron
+client/dist/
+out/
+
+# Coverage / test
+coverage/
+
+# Documentação local (não versionada)
+docs/
