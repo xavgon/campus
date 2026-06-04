@@ -1,6 +1,6 @@
 # Roadmap — Frontend CAMPUS
 
-Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7** (e Electron quando aplicável). Alinhado com a ordem oficial dos módulos do projeto (`docs/DEVELOPMENT_FLOW.md`).
+Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7** (e Electron quando aplicável). Alinhado com a ordem oficial dos módulos do projeto (`docs/DEVELOPMENT_FLOW.md` no ambiente local).
 
 **Stack:** TypeScript · design system amarelo/preto/prata · cantos retos (`rounded-none`) · Plus Jakarta Sans.
 
@@ -8,18 +8,24 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ---
 
-## Estado atual (baseline)
+## Estado actual (baseline)
 
 ### Concluído
 
 | Área | Entregáveis |
 |------|-------------|
-| **Arquitetura** | `app/`, `features/`, `pages/`, `shared/` (layouts, componentes campus, API client, hooks) |
-| **Marketing** | Home, login, registo com `MarketingLayout`, fundos por rota, `CampusNav` + indicador deslizante |
-| **Design system** | `AuthPanel`, `Field`, `Alert`, `Modal`, `RouteTransition`, tokens em `index.css` + `brand.ts` |
-| **Auth (Módulo 1)** | `AuthContext`, `ProtectedRoute`, validação de formulários, skeleton, «Lembrar email» |
-| **Recuperação password** | `ForgotPasswordModal` + integração API (fluxo genérico; reset por email pendente no backend) |
-| **Área autenticada** | `MainLayout` + dashboard mínimo (saudação + logout) |
+| **Arquitetura** | `app/`, `features/`, `pages/`, `shared/` |
+| **Marketing** | Home, login, registo, `MarketingLayout`, fundos, malha triangular |
+| **Design system** | `AuthPanel`, `Field`, `TextAreaField`, `Alert`, `Modal`, `RouteTransition`, `campus-panel` |
+| **Auth (Módulo 1)** | `AuthContext`, `ProtectedRoute`, validação, skeleton, «Lembrar email» |
+| **Recuperação password** | `ForgotPasswordModal` (reset por email pendente no backend) |
+| **Nav autenticada** | `CampusNav`, indicador deslizante, `NavBrand`, `NavUserMenu` (avatar + Sair) |
+| **Dashboard** | Boas-vindas, stats, episódios recentes, ligados agora, atalho admin |
+| **Podcasts** | Biblioteca com grelha, pesquisa, filtros, ordenação, estados vazio/loading |
+| **Publicar** | Formulário completo, dropzones, categoria «Outros», validação local |
+| **Perfil** | Layout, avatar, forms nome/password (gravação API Módulo 6 pendente) |
+| **Presença** | `usePresenceSession` + painel de utilizadores ligados |
+| **Admin** | `/admin` — utilizadores, publicações, transmissões, registo; CRUD com formulários e modais |
 | **Dev UX** | Credenciais admin pré-preenchidas em `import.meta.env.DEV` |
 
 ### Rotas existentes
@@ -27,26 +33,37 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 | Rota | Página | Layout |
 |------|--------|--------|
 | `/` | Home | Marketing |
+| `/explorar` | Explorar | Marketing |
 | `/login` | Login | Marketing |
 | `/register` | Registo | Marketing |
-| `/dashboard` | Dashboard (placeholder) | Main + protegida |
+| `/dashboard` | Dashboard | Main + protegida |
+| `/podcasts` | Biblioteca | Main + protegida |
+| `/podcasts/new` | Publicar | Main + protegida |
+| `/profile` | Perfil | Main + protegida |
+| `/admin` | Painel admin | Main + admin |
+| `/admin/users` | Utilizadores | Main + admin |
+| `/admin/posts` | Publicações | Main + admin |
+| `/admin/transmissions` | Transmissões | Main + admin |
+| `/admin/logs` | Registo | Main + admin |
 
 ### Lacunas conhecidas (curto prazo)
 
-- [ ] Página **nova password** (token de reset) — depende do backend de email/reset
-- [ ] Dashboard alinhado ao design system (ainda básico face ao marketing)
-- [ ] Tratamento global de erros API (401 → logout, toast/alert reutilizável)
-- [ ] Testes (Vitest + Testing Library) — não iniciados
+- [ ] Página **nova password** (`/reset-password?token=…`)
+- [ ] **Upload real** de áudio/capa (`POST` multipart + progresso)
+- [ ] Substituir **dados demo** da biblioteca por `GET /api/podcasts`
+- [ ] **Gravar perfil** quando API Módulo 6 existir
+- [ ] Tratamento global de erros API (401 → logout, toast reutilizável)
+- [ ] Testes (Vitest + Testing Library)
 
 ---
 
 ## Princípios do roadmap
 
-1. **Um módulo de cada vez** — UI só depois da API estável do módulo.
-2. **Feature-first** — lógica de domínio em `features/<nome>/` (pages, components, hooks, services, types).
-3. **Shared enxuto** — só o que é transversal (layout, UI campus, API base).
-4. **Mobile-first** — layouts responsivos; Electron reutiliza os mesmos ecrãs.
-5. **Acessibilidade** — labels, `aria-*`, foco em modais, `prefers-reduced-motion` (já parcial em CSS).
+1. **Um módulo de cada vez** — UI alinhada à API estável do módulo.
+2. **Feature-first** — `features/<nome>/` (pages, components, hooks, services, types).
+3. **Shared enxuto** — só transversal em `shared/`.
+4. **Mobile-first** — Electron reutiliza os mesmos ecrãs.
+5. **Acessibilidade** — labels, `aria-*`, foco em modais.
 
 ---
 
@@ -58,229 +75,170 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 - [x] Cliente HTTP (`shared/api/client.ts`)
 - [x] Layouts marketing vs. app
 
-**Critério de done:** build (`npm run build`) e dev server estáveis.
-
 ---
 
 ## Fase 1 — Autenticação (~90% frontend)
 
 ### Feito
 
-- [x] Login e registo com validação client-side
-- [x] Persistência de sessão (token + perfil)
-- [x] Rotas protegidas
+- [x] Login e registo com validação
+- [x] Persistência de sessão (token + perfil com `role`)
+- [x] Rotas protegidas + `AdminRoute`
 - [x] Modal esqueci password
-- [x] Animações de entrada (rotas, aside, modal com portal)
+- [x] Nav com avatar e menu utilizador
 
 ### Por concluir
 
-- [ ] **Reset password:** rota `/reset-password?token=…` + formulário + estados sucesso/erro/expirado
-- [ ] **Perfil mínimo na nav autenticada:** avatar/iniciais, menu utilizador (logout, ir ao perfil)
-- [ ] **Refresh de perfil** após editar dados (Módulo 6)
-- [ ] Mensagens de erro consistentes (mapear códigos HTTP → copy PT)
-- [ ] (Opcional) OAuth / SSO — fora do âmbito académico inicial
-
-**Critério de done:** fluxo completo registo → login → dashboard → logout → recuperação (quando API existir).
+- [ ] Reset password: rota + formulário + estados
+- [ ] Refresh de perfil após editar (Módulo 6)
+- [ ] Mensagens HTTP → copy PT centralizadas
 
 ---
 
-## Fase 2 — Gestão de podcasts (próximo foco)
+## Fase 2 — Gestão de podcasts (~60% frontend)
 
-### Páginas e rotas
+### Feito
 
-| Rota sugerida | Descrição |
-|---------------|-----------|
-| `/dashboard` | Hub: resumo + atalhos |
-| `/podcasts` | Listagem (grelha ou tabela) |
-| `/podcasts/new` | Upload + metadados |
-| `/podcasts/:id` | Detalhe + editar + eliminar |
-| `/podcasts/:id/edit` | (ou drawer/modal de edição) |
+- [x] Rotas `/podcasts`, `/podcasts/new`
+- [x] Tipos, constantes, validação de publicação
+- [x] Listagem: cards, filtros, pesquisa, ordenação, skeleton
+- [x] Formulário: áudio, capa, metadados, «Outros»
+- [x] Estados vazios e mensagens de demo/API
 
-### Features a criar (`features/podcasts/`)
+### Por concluir
 
-- [ ] `podcast.service.ts` — CRUD + upload multipart
-- [ ] Tipos `Podcast`, `Category`, filtros de listagem
-- [ ] **Listagem:** cards com capa, título, categoria, data, estado de compressão
-- [ ] **Formulário upload:** áudio + capa, progress bar, validação tamanho/tipo
-- [ ] **Estados vazios / loading / erro** (skeleton alinhado a `AuthFormSkeleton`)
-- [ ] **Confirmação de eliminação** (modal reutilizando `Modal.tsx`)
-- [ ] Filtro por categoria (select ou chips)
-- [ ] Paginação ou infinite scroll (conforme API)
+- [ ] `podcast.service.ts` — `GET/POST` multipart real
+- [ ] `/podcasts/:id` — detalhe, editar, eliminar (utilizador)
+- [ ] Progress bar de upload
+- [ ] Paginação ou infinite scroll
+- [ ] Remover `DEMO_PODCASTS` quando API estiver ligada
 
-### UI / layout
+---
 
-- [ ] Sidebar ou top nav no `MainLayout` (Dashboard, Os meus podcasts, Upload)
-- [ ] Breadcrumbs em páginas internas
-- [ ] Painéis `campus-panel` consistentes com marketing
+## Fase 2b — Administração ✅ (frontend)
 
-### Integração
+- [x] Layout lateral `AdminLayout` + navegação por secção
+- [x] Painel: métricas + atalhos
+- [x] Utilizadores: listar, editar (modal), papel, eliminar
+- [x] Publicações: criar, editar, remover (metadados; áudio via Módulo 2)
+- [x] Transmissões: criar, editar, estados, eliminar
+- [x] Registo de acções admin (`/admin/logs`)
+- [x] Integração com API `/api/admin/*`
 
-- [ ] Upload com `FormData` e feedback de progresso (`onUploadProgress` no axios)
-- [ ] Atualizar lista após criar/editar/apagar (invalidação simples ou refetch)
+---
 
-**Critério de done:** utilizador autenticado cria, vê, edita e apaga podcasts com feedback visual claro.
+## Fase 2c — Presença ✅
+
+- [x] Heartbeat na área autenticada
+- [x] Contador e lista no dashboard
+- [x] Integração `GET /presence/online`
 
 ---
 
 ## Fase 3 — Compressão (feedback na UI)
 
-Backend processa FFmpeg; o frontend **reflete estado**, não comprime localmente.
-
-- [ ] Badge/estado por podcast: `pendente` · `a processar` · `concluído` · `falhou`
-- [ ] Polling ou SSE/WebSocket leve para atualizar % (se API expuser)
-- [ ] Painel de métricas no detalhe: tamanho original vs. comprimido, ratio %
-- [ ] Desativar download/stream até compressão concluída (se regra de negócio exigir)
-- [ ] Tooltip ou secção «Como funciona a compressão» (educativo)
-
-**Critério de done:** utilizador percebe o estado da compressão sem refrescar manualmente a página.
+- [ ] Badge por podcast: pendente / a processar / concluído / falhou
+- [ ] Polling ou SSE para %
+- [ ] Métricas original vs. comprimido no detalhe
 
 ---
 
 ## Fase 4 — Streaming e player
 
-### Componentes (`features/player/` ou `shared/components/player/`)
-
-- [ ] `AudioPlayer` — play/pause, seek, tempo atual/total, volume, mute
-- [ ] Integração `GET /stream/:id` (Range requests — transparente no `<audio>` se URL correta)
-- [ ] Player na página de detalhe do podcast + mini-player opcional no layout
-- [ ] Estados: buffering, erro de rede, fim da faixa
-- [ ] Acessibilidade: controlos por teclado, labels nos botões
-
-### UX
-
-- [ ] Capa + waveform ou barra de progresso estilizada (CSS)
-- [ ] Lista «A reproduzir agora» no dashboard (opcional)
-
-**Critério de done:** reprodução contínua com seek e controlos fiáveis em desktop e mobile.
+- [ ] `AudioPlayer` — play/pause, seek, volume
+- [ ] Integração `GET /stream/:id`
+- [ ] Mini-player opcional
 
 ---
 
-## Fase 5 — Downloads e pesquisa
+## Fase 5 — Downloads e pesquisa global
 
-### Pesquisa
-
-- [ ] Barra de pesquisa global ou na listagem (`/podcasts?q=`)
-- [ ] Filtros: título, categoria, autor (conforme API)
-- [ ] URL com query params (partilhável, voltar atrás preserva filtros)
-- [ ] Debounce na pesquisa (300–400 ms)
-
-### Downloads
-
-- [ ] Botão download áudio/capa com estado `a descarregar…`
-- [ ] Electron: diálogo «Guardar como» / pasta de downloads da app
-- [ ] Web: trigger download via blob/link
-- [ ] Indicador de ficheiros já descarregados (offline local — fase avançada)
-
-**Critério de done:** encontrar podcast por texto/filtros e descarregar ficheiros com feedback.
+- [ ] Pesquisa global ou URL `?q=`
+- [ ] Download com estados
+- [ ] Electron: diálogo guardar ficheiro
 
 ---
 
-## Fase 6 — Perfil, segurança e logs
+## Fase 6 — Perfil e API (~50% frontend)
 
-### Perfil (`/profile` ou `/settings`)
+### Feito
 
-- [ ] Ver/editar nome e email
-- [ ] Upload avatar (preview + crop opcional)
-- [ ] Alterar password (formulário com validação forte)
-- [ ] Secção «Sessão» — terminar sessão
+- [x] Página `/profile` com secções e validação local
 
-### Logs (admin ou próprio utilizador)
+### Por concluir
 
-- [ ] Tabela simples de ações recentes (data, ação)
-- [ ] Paginação; vazio elegante
-
-**Critério de done:** utilizador gere perfil sem sair do design system; logs legíveis.
+- [ ] `PUT` perfil e password no servidor
+- [ ] Upload avatar
+- [ ] Logs do próprio utilizador (se exposto pela API)
 
 ---
 
-## Fase 7 — Entrega e qualidade
+## Fase 7 — Qualidade
 
-- [ ] Revisão de **todas** as rotas em viewports comuns (360, 768, 1280)
-- [ ] Lighthouse básico (performance, a11y)
-- [ ] Testes E2E críticos: login, upload, play (Playwright ou Cypress)
-- [ ] Testes unitários: validações, hooks, serviços
-- [ ] `README` do client atualizado (scripts, env, roadmap link)
-- [ ] Build produção + smoke test Electron
-
----
-
-## Electron (paralelo ao web)
-
-| Item | Prioridade |
-|------|------------|
-| Janela principal carrega mesma app Vite | Alta |
-| Menu nativo mínimo (ficheiro, sair) | Média |
-| Notificações de compressão concluída | Baixa |
-| Atualizações automáticas | Fora de âmbito académico |
+- [ ] Responsivo 360 / 768 / 1280
+- [ ] Testes E2E (login, upload, play)
+- [ ] Testes unitários (validações, hooks)
+- [x] README do client actualizado
+- [ ] Build Electron smoke test
 
 ---
 
-## Design system — evolução contínua
-
-- [ ] Documentar tokens (cores, espaçamentos) numa página interna ou Storybook leve
-- [ ] Componentes: `Select`, `Textarea`, `Spinner`, `Toast`, `EmptyState`, `DataTable`
-- [ ] Variante «danger» consistente em ações destrutivas
-- [ ] Dark mode completo (hoje o tema já é escuro; rever contraste WCAG)
-- [ ] Iconografia única (evitar mistura de ícones inline ad-hoc)
-
----
-
-## Estrutura de pastas (alvo)
+## Estrutura de pastas (actual)
 
 ```
 client/src/
-├── app/
-│   └── App.tsx                 # rotas
+├── app/App.tsx
 ├── features/
-│   ├── auth/                   # ✅
-│   ├── podcasts/               # Fase 2
-│   ├── player/                 # Fase 4
-│   └── profile/                # Fase 6
-├── pages/
-│   ├── home/
-│   └── dashboard/              # evoluir para hub
+│   ├── auth/           ✅
+│   ├── dashboard/      ✅
+│   ├── podcasts/       ✅ (demo + forms)
+│   ├── profile/        ✅ (UI)
+│   ├── presence/       ✅
+│   └── admin/          ✅
+├── pages/              # re-exports
 └── shared/
     ├── api/
     ├── components/campus/
-    ├── components/ui/
-    ├── hooks/
-    └── layouts/
+    ├── layouts/
+    ├── navigation/
+    └── hooks/
 ```
 
 ---
 
-## Dependências de API (checklist rápido)
+## Dependências de API (checklist)
 
-| Fase | Endpoints esperados no client |
-|------|-------------------------------|
-| 1 | `POST /auth/login`, `register`, `profile`, `forgot-password`, `reset-password` |
-| 2 | CRUD `/podcasts`, upload multipart, `GET /categories` |
-| 3 | Campo `compression_status` / métricas no modelo podcast |
-| 4 | `GET /stream/:id` |
-| 5 | `GET /download/:id`, query search em listagem |
-| 6 | `PUT /profile`, `PUT /password`, `GET /logs` |
-
----
-
-## Prioridades recomendadas (próximas 2–4 semanas)
-
-1. **Fechar Módulo 1** — reset password + erros API globais  
-2. **MainLayout + navegação app** — preparar Fase 2  
-3. **Listagem + upload de podcasts** — valor visível no dashboard  
-4. **Player básico** — assim que streaming existir no backend  
-5. **Testes** — pelo menos login + upload feliz  
+| Área | Estado client | Endpoints |
+|------|---------------|-----------|
+| Auth | ✅ | login, register, profile, forgot-password |
+| Presença | ✅ | heartbeat, leave, online |
+| Admin | ✅ | overview, users, podcasts, streams, logs, categories |
+| Podcasts (user) | ⏳ | CRUD + upload multipart |
+| Stream | ⏳ | player URL |
+| Perfil | ⏳ | PUT profile, password |
 
 ---
 
-## Referências no repositório
+## Prioridades recomendadas
+
+1. **Ligar upload** — `POST /api/podcasts` multipart  
+2. **Listagem real** — remover demo na biblioteca  
+3. **Reset password** — rota + backend email  
+4. **Player** — quando streaming existir  
+5. **Testes** — login + publicar + admin smoke  
+
+---
+
+## Referências versionadas
 
 | Documento | Local |
 |-----------|--------|
-| Fluxo por módulo | `docs/DEVELOPMENT_FLOW.md` |
-| Roadmap geral (full-stack) | `docs/roadmap.md` |
-| Tarefas | `docs/tasks.md` |
-| Rotas atuais | `client/src/app/App.tsx` |
+| README do monorepo | `../README.md` |
+| API e modelo de dados | `../DOCUMENTATION.md` |
+| Este roadmap | `client/FRONTEND_ROADMAP.md` |
+| Rotas | `client/src/app/App.tsx` |
+| Fluxo por módulo (local) | `docs/DEVELOPMENT_FLOW.md` |
 
 ---
 
-*Este ficheiro vive em `client/` para ser versionado no Git. Atualizar quando concluir uma fase ou mudar prioridades.*
+*Atualizar quando concluíres uma fase ou mudares prioridades.*

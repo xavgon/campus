@@ -1,73 +1,97 @@
-# React + TypeScript + Vite
+# CAMPUS — Cliente
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Interface **React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + React Router 7**, com build **Electron** opcional. Design system amarelo/preto/prata, cantos retos.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 20+
+- API CAMPUS a correr (`server/`) — ver [README](../README.md)
 
-## React Compiler
+## Configuração
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| Variável | Descrição |
+|----------|-----------|
+| `VITE_API_URL` | Base da API (ex.: `http://localhost:3001/api`) |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Scripts
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento Vite (`:5173`) |
+| `npm run build` | `tsc -b` + build de produção em `dist/` |
+| `npm run preview` | Pré-visualizar build |
+| `npm run lint` | ESLint |
+| `npm run electron:dev` | Vite + Electron |
+| `npm run electron:build` | Build web + Electron |
+
+## Rotas
+
+### Marketing (`MarketingLayout`)
+
+| Rota | Página |
+|------|--------|
+| `/` | Home |
+| `/explorar` | Explorar |
+| `/login` | Login |
+| `/register` | Registo |
+
+### Aplicação (`MainLayout` + `ProtectedRoute`)
+
+| Rota | Página | Notas |
+|------|--------|-------|
+| `/dashboard` | Dashboard | Stats, ligados agora, atalhos |
+| `/podcasts` | Biblioteca | Grelha, filtros, demo/API |
+| `/podcasts/new` | Publicar | Áudio, capa, categoria, «Outros» |
+| `/profile` | Perfil | Nome, password (API pendente) |
+
+### Admin (`AdminRoute` + `AdminLayout`) — só `role: admin`
+
+| Rota | Página |
+|------|--------|
+| `/admin` | Painel / métricas |
+| `/admin/users` | Gestão de contas |
+| `/admin/posts` | Publicações (podcasts) |
+| `/admin/transmissions` | Transmissões |
+| `/admin/logs` | Registo de acções |
+
+## Estrutura `src/`
+
 ```
+src/
+├── app/App.tsx              # Definição de rotas
+├── features/
+│   ├── auth/                # Contexto, login, registo, ProtectedRoute
+│   ├── dashboard/           # Hub da área pessoal
+│   ├── podcasts/            # Biblioteca, publicar, componentes
+│   ├── profile/             # Perfil e secções
+│   ├── presence/            # Heartbeat e utilizadores ligados
+│   └── admin/               # Painel de administração
+├── pages/                   # Re-exports finos para rotas
+└── shared/
+    ├── api/client.ts        # Axios + token
+    ├── components/campus/   # Design system (Nav, Field, Modal…)
+    ├── layouts/             # MainLayout, MarketingLayout
+    ├── navigation/          # navConfig
+    └── styles/brand.ts      # Tokens de marca
+```
+
+## Desenvolvimento
+
+- **Admin em dev:** login `admin@campus.co.ao` / `Campus123` (pré-preenchido em DEV).
+- **Presença:** com a API activa, o dashboard mostra utilizadores ligados (heartbeat automático na área autenticada).
+- **Dados demo:** a biblioteca de podcasts usa `DEMO_PODCASTS` até existir `GET /api/podcasts`.
+
+## Roadmap
+
+Ver [FRONTEND_ROADMAP.md](./FRONTEND_ROADMAP.md).
+
+## Documentação do projeto
+
+- [README raiz](../README.md)
+- [DOCUMENTATION.md](../DOCUMENTATION.md) — API e modelo de dados
