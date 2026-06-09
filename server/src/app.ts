@@ -11,6 +11,7 @@ import { healthRouter } from './routes/health.routes';
 import { adminRouter } from './routes/admin.routes';
 import { presenceRouter } from './routes/presence.routes';
 import { podcastRouter } from './routes/podcast.routes';
+import { streamRouter } from './routes/stream.routes';
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/presence', presenceRouter);
 app.use('/api/podcasts', podcastRouter);
+app.use('/api/stream', streamRouter);
 app.use('/api/admin', adminRouter);
 
 app.use(notFoundHandler);
