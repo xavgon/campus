@@ -1,11 +1,13 @@
 import fs from 'fs';
 import path from 'path';
+import { compressAudio } from '../compression/compress';
 import { AppError } from '../middleware/errorHandler';
 import {
   deletePodcastAndReturnPath,
   findPodcastById,
   insertPodcast,
   listPodcasts,
+  updatePodcastCompression,
   type Podcast,
 } from '../models/podcast.model';
 import type { CreatePodcastInput } from '../validations/podcast.validation';
@@ -45,7 +47,7 @@ export const createPodcast = async (
   const cover_url = files.cover ? `/uploads/covers/${files.cover.filename}` : null;
   const original_size = files.audio.size;
 
-  return insertPodcast({
+  const podcast = await insertPodcast({
     title: input.title,
     description: input.description,
     category_id: input.category_id,
@@ -54,6 +56,38 @@ export const createPodcast = async (
     original_size,
     user_id: userId,
   });
+
+  // Compressão assíncrona — não bloqueia a resposta HTTP
+  const physicalPath = path.join(process.cwd(), audio_url);
+  void runCompression(podcast.id, physicalPath);
+
+  return podcast;
+};
+
+const runCompression = async (podcastId: string, inputPath: string): Promise<void> => {
+  try {
+    console.log(`[CAMPUS] Compressão iniciada: ${podcastId}`);
+    const result = await compressAudio(inputPath);
+
+    // audio_url comprimido: /uploads/audio/compressed/filename.mp3
+    const compressedUrl = `/uploads/audio/compressed/${path.basename(result.outputPath)}`;
+
+    await updatePodcastCompression(
+      podcastId,
+      result.compressedSize,
+      result.compressionRatio,
+      compressedUrl,
+    );
+
+    console.log(
+      `[CAMPUS] Compressão concluída: ${podcastId} | ` +
+      `${result.originalSize} → ${result.compressedSize} bytes | ` +
+      `${result.compressionRatio}% redução`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[CAMPUS] Compressão falhou para ${podcastId}: ${msg}`);
+  }
 };
 
 // ─── Eliminar ─────────────────────────────────────────────────────────────────

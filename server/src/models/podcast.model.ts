@@ -113,6 +113,20 @@ export const insertPodcast = async (data: CreatePodcastData): Promise<Podcast> =
   return podcast;
 };
 
+export const updatePodcastCompression = async (
+  id: string,
+  compressedSize: number,
+  compressionRatio: number,
+  compressedAudioUrl: string,
+): Promise<void> => {
+  await getPool().query(
+    `UPDATE podcasts
+     SET compressed_size = $1, compression_ratio = $2, audio_url = $3
+     WHERE id = $4`,
+    [compressedSize, compressionRatio, compressedAudioUrl, id],
+  );
+};
+
 export const deletePodcastAndReturnPath = async (
   id: string,
   userId: string,
