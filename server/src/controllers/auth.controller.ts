@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service';
 import { sendSuccess } from '../utils/apiResponse';
-import { validateForgotPassword, validateLogin, validateRegister, validateUpdatePassword, validateUpdateProfile } from '../validations/auth.validation';
+import { validateForgotPassword, validateLogin, validateRegister, validateResetPassword, validateUpdatePassword, validateUpdateProfile } from '../validations/auth.validation';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   const input = validateRegister(req.body);
@@ -18,11 +18,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   const input = validateForgotPassword(req.body);
   await authService.requestPasswordReset(input.email);
-  sendSuccess(
-    res,
-    null,
-    'Se o email existir, receberás instruções para redefinir a password.',
-  );
+  sendSuccess(res, null, 'Se o email existir, receberás instruções para redefinir a password.');
+};
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const { token, newPassword } = validateResetPassword(req.body);
+  await authService.resetPassword(token, newPassword);
+  sendSuccess(res, null, 'Password redefinida com sucesso. Podes fazer login.');
 };
 
 export const getProfile = async (req: Request, res: Response): Promise<void> => {

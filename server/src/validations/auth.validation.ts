@@ -90,6 +90,20 @@ export const validateUpdatePassword = (body: unknown): UpdatePasswordInput => {
   return { currentPassword, newPassword };
 };
 
+export interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
+export const validateResetPassword = (body: unknown): ResetPasswordInput => {
+  if (!body || typeof body !== 'object') throw new AppError('Dados inválidos');
+  const data = body as Record<string, unknown>;
+  const token = requireString(data.token, 'Token');
+  const newPassword = requireString(data.newPassword, 'Nova password');
+  if (newPassword.length < 6) throw new AppError('Nova password deve ter pelo menos 6 caracteres');
+  return { token, newPassword };
+};
+
 export const validateForgotPassword = (body: unknown): ForgotPasswordInput => {
   if (!body || typeof body !== 'object') {
     throw new AppError('Dados inválidos');
