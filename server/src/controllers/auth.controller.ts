@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service';
 import { sendSuccess } from '../utils/apiResponse';
-import { validateForgotPassword, validateLogin, validateRegister } from '../validations/auth.validation';
+import { validateForgotPassword, validateLogin, validateRegister, validateUpdatePassword, validateUpdateProfile } from '../validations/auth.validation';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   const input = validateRegister(req.body);
@@ -33,4 +33,26 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   }
   const user = await authService.getProfile(userId);
   sendSuccess(res, { user });
+};
+
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const { nome } = validateUpdateProfile(req.body);
+  const user = await authService.updateProfile(userId, nome);
+  sendSuccess(res, { user }, 'Perfil actualizado com sucesso');
+};
+
+export const updatePassword = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const { currentPassword, newPassword } = validateUpdatePassword(req.body);
+  await authService.updatePassword(userId, currentPassword, newPassword);
+  sendSuccess(res, null, 'Password alterada com sucesso');
 };

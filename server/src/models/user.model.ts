@@ -129,4 +129,27 @@ export const deleteUserById = async (id: string): Promise<boolean> => {
   return (result.rowCount ?? 0) > 0;
 };
 
+export const updateUserProfile = async (
+  id: string,
+  nome: string,
+): Promise<PublicUser | null> => {
+  const result = await getPool().query<UserRow>(
+    `UPDATE users SET nome = $1 WHERE id = $2 RETURNING ${USER_COLUMNS}`,
+    [nome, id],
+  );
+  if (!result.rows[0]) return null;
+  return toPublicUser(result.rows[0]);
+};
+
+export const updateUserPassword = async (
+  id: string,
+  passwordHash: string,
+): Promise<boolean> => {
+  const result = await getPool().query(
+    'UPDATE users SET password = $1 WHERE id = $2',
+    [passwordHash, id],
+  );
+  return (result.rowCount ?? 0) > 0;
+};
+
 export const mapToPublicUser = toPublicUser;

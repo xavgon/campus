@@ -9,3 +9,5 @@ authRouter.post('/register', asyncHandler(authController.register));
 authRouter.post('/login', asyncHandler(authController.login));
 authRouter.post('/forgot-password', asyncHandler(authController.forgotPassword));
 authRouter.get('/profile', requireAuth, asyncHandler(authController.getProfile));
+authRouter.put('/profile', requireAuth, asyncHandler(authController.updateProfile));
+authRouter.put('/password', requireAuth, asyncHandler(authController.updatePassword));

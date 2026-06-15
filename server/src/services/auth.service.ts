@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
-import { createUser, findUserByEmail, findUserById, mapToPublicUser, type PublicUser } from '../models/user.model';
+import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
 import type { UserRole } from '../types/roles';
 
 const SALT_ROUNDS = 10;
@@ -78,8 +78,27 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
 
 export const getProfile = async (userId: string): Promise<PublicUser> => {
   const user = await findUserById(userId);
-  if (!user) {
-    throw new AppError('Utilizador não encontrado', 404);
-  }
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
   return mapToPublicUser(user);
+};
+
+export const updateProfile = async (userId: string, nome: string): Promise<PublicUser> => {
+  const updated = await updateUserProfile(userId, nome);
+  if (!updated) throw new AppError('Utilizador não encontrado', 404);
+  return updated;
+};
+
+export const updatePassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  const valid = await bcrypt.compare(currentPassword, user.password);
+  if (!valid) throw new AppError('Password actual incorrecta', 401);
+
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await updateUserPassword(userId, hash);
 };
