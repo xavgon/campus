@@ -1,8 +1,10 @@
 import bcrypt from 'bcrypt';
+import fs from 'fs';
 import jwt from 'jsonwebtoken';
+import path from 'path';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
-import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
+import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserAvatar, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
 import type { UserRole } from '../types/roles';
 
 const SALT_ROUNDS = 10;
@@ -113,6 +115,21 @@ export const resetPassword = async (token: string, newPassword: string): Promise
 
   const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await updateUserPassword(payload.userId, hash);
+};
+
+export const updateAvatar = async (userId: string, newFilePath: string): Promise<PublicUser> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  // apaga foto anterior se existir
+  if (user.foto_perfil) {
+    const oldPath = path.join(__dirname, '..', '..', user.foto_perfil);
+    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+  }
+
+  const updated = await updateUserAvatar(userId, newFilePath);
+  if (!updated) throw new AppError('Erro ao actualizar foto', 500);
+  return updated;
 };
 
 export const getProfile = async (userId: string): Promise<PublicUser> => {

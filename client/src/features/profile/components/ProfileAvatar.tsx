@@ -1,3 +1,4 @@
+import { SERVER_URL } from '@/shared/api/client';
 import { getInitials } from '@/features/profile/utils/formatMemberSince';
 
 interface ProfileAvatarProps {
@@ -23,9 +24,10 @@ export const ProfileAvatar = ({ nome, fotoUrl, size = 'lg' }: ProfileAvatarProps
   const borderClass = borderClasses[size];
 
   if (fotoUrl) {
+    const src = fotoUrl.startsWith('http') ? fotoUrl : `${SERVER_URL}/${fotoUrl}`;
     return (
       <img
-        src={fotoUrl}
+        src={src}
         alt=""
         className={`${sizeClass} ${borderClass} rounded-none object-cover`}
       />

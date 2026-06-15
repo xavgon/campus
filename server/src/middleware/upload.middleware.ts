@@ -8,8 +8,9 @@ import { AppError } from './errorHandler';
 
 const audioDir = path.join(config.uploadDir, 'audio');
 const coversDir = path.join(config.uploadDir, 'covers');
+const avatarsDir = path.join(config.uploadDir, 'avatars');
 
-for (const dir of [audioDir, coversDir]) {
+for (const dir of [audioDir, coversDir, avatarsDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -64,6 +65,35 @@ const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
 };
 
 // ─── Instância multer ─────────────────────────────────────────────────────────
+
+// ─── Avatar (foto de perfil) ──────────────────────────────────────────────────
+
+const avatarStorage = multer.diskStorage({
+  destination(_req, _file, cb) {
+    cb(null, avatarsDir);
+  },
+  filename(_req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    cb(null, unique);
+  },
+});
+
+const avatarFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  if (!IMAGE_MIME_TYPES.has(file.mimetype)) {
+    cb(new AppError('Formato de imagem inválido. Use JPG, PNG ou WebP.'));
+    return;
+  }
+  cb(null, true);
+};
+
+export const uploadAvatar = multer({
+  storage: avatarStorage,
+  fileFilter: avatarFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+}).single('photo');
+
+// ─── Podcast (áudio + capa) ───────────────────────────────────────────────────
 
 export const uploadPodcast = multer({
   storage,

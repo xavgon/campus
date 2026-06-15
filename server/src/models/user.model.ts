@@ -141,6 +141,18 @@ export const updateUserProfile = async (
   return toPublicUser(result.rows[0]);
 };
 
+export const updateUserAvatar = async (
+  id: string,
+  fotoPerfil: string,
+): Promise<PublicUser | null> => {
+  const result = await getPool().query<UserRow>(
+    `UPDATE users SET foto_perfil = $1 WHERE id = $2 RETURNING ${USER_COLUMNS}`,
+    [fotoPerfil, id],
+  );
+  if (!result.rows[0]) return null;
+  return toPublicUser(result.rows[0]);
+};
+
 export const updateUserPassword = async (
   id: string,
   passwordHash: string,

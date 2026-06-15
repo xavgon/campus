@@ -27,6 +27,21 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
   sendSuccess(res, null, 'Password redefinida com sucesso. Podes fazer login.');
 };
 
+export const updateAvatar = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ success: false, message: 'Nenhuma imagem enviada', data: null });
+    return;
+  }
+  const filePath = `uploads/avatars/${req.file.filename}`;
+  const user = await authService.updateAvatar(userId, filePath);
+  sendSuccess(res, { user }, 'Foto de perfil actualizada com sucesso');
+};
+
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user?.userId;
   if (!userId) {
