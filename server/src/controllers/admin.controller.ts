@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as adminService from '../services/admin.service';
 import { sendSuccess } from '../utils/apiResponse';
+import { paramString } from '../utils/requestParams';
 
 const actorId = (req: Request): string | undefined => req.user?.userId;
 
@@ -26,7 +27,7 @@ export const patchUser = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const user = await adminService.updateUser(req.params.id, id, {
+  const user = await adminService.updateUser(paramString(req.params.id), id, {
     nome: typeof req.body.nome === 'string' ? req.body.nome : undefined,
     role: typeof req.body.role === 'string' ? req.body.role : undefined,
   });
@@ -40,7 +41,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  await adminService.removeUser(req.params.id, id);
+  await adminService.removeUser(paramString(req.params.id), id);
   sendSuccess(res, null, 'Utilizador eliminado');
 };
 
@@ -75,7 +76,7 @@ export const patchPodcast = async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  const podcast = await adminService.updatePodcast(req.params.id, id, {
+  const podcast = await adminService.updatePodcast(paramString(req.params.id), id, {
     title: typeof req.body.title === 'string' ? req.body.title : undefined,
     description: typeof req.body.description === 'string' ? req.body.description : undefined,
     category_id:
@@ -95,7 +96,7 @@ export const deletePodcast = async (req: Request, res: Response): Promise<void> 
     return;
   }
 
-  await adminService.removePodcast(req.params.id, id);
+  await adminService.removePodcast(paramString(req.params.id), id);
   sendSuccess(res, null, 'Publicação eliminada');
 };
 
@@ -134,7 +135,7 @@ export const patchStream = async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  const stream = await adminService.updateStream(req.params.id, id, {
+  const stream = await adminService.updateStream(paramString(req.params.id), id, {
     title: typeof req.body.title === 'string' ? req.body.title : undefined,
     description: typeof req.body.description === 'string' ? req.body.description : undefined,
     status: typeof req.body.status === 'string' ? req.body.status : undefined,
@@ -161,7 +162,7 @@ export const deleteStream = async (req: Request, res: Response): Promise<void> =
     return;
   }
 
-  await adminService.removeStream(req.params.id, id);
+  await adminService.removeStream(paramString(req.params.id), id);
   sendSuccess(res, null, 'Transmissão eliminada');
 };
 

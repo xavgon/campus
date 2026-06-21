@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { fetchHealth } from '@/shared/api/client';
 import { FeatureList } from '@/shared/components/campus/FeatureList';
 import { Button } from '@/shared/components/ui/Button';

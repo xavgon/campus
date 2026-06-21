@@ -28,6 +28,13 @@ export interface AdminUserListItem {
   created_at: string;
 }
 
+interface AdminUserListRow extends Omit<AdminUserListItem, 'created_at'> {
+  created_at: Date | string;
+}
+
+const formatCreatedAt = (value: Date | string): string =>
+  value instanceof Date ? value.toISOString() : String(value);
+
 const USER_COLUMNS = 'id, nome, email, password, foto_perfil, role, created_at';
 
 const toPublicUser = (row: UserRow): PublicUser => ({
@@ -71,7 +78,7 @@ export const createUser = async (
 };
 
 export const listUsersForAdmin = async (): Promise<AdminUserListItem[]> => {
-  const result = await getPool().query<AdminUserListItem>(
+  const result = await getPool().query<AdminUserListRow>(
     `SELECT id, nome, email, role, created_at
      FROM users
      ORDER BY created_at DESC`,
@@ -79,8 +86,7 @@ export const listUsersForAdmin = async (): Promise<AdminUserListItem[]> => {
   return result.rows.map((row) => ({
     ...row,
     role: row.role ?? 'user',
-    created_at:
-      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    created_at: formatCreatedAt(row.created_at),
   }));
 };
 
@@ -109,7 +115,7 @@ export const updateUserByAdmin = async (
   if (fields.length === 0) return null;
 
   values.push(id);
-  const result = await getPool().query<AdminUserListItem>(
+  const result = await getPool().query<AdminUserListRow>(
     `UPDATE users SET ${fields.join(', ')}
      WHERE id = $${index}
      RETURNING id, nome, email, role, created_at`,
@@ -119,8 +125,7 @@ export const updateUserByAdmin = async (
   if (!row) return null;
   return {
     ...row,
-    created_at:
-      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    created_at: formatCreatedAt(row.created_at),
   };
 };
 

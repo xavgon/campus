@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import {
   sendPresenceHeartbeat,
   sendPresenceLeave,

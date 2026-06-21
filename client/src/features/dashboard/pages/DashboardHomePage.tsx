@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isAdminUser } from '@/features/auth/utils/isAdmin';
 import { DASHBOARD_SHORTCUTS } from '@/features/dashboard/constants';
 import { DashboardAttentionList } from '@/features/dashboard/components/DashboardAttentionList';

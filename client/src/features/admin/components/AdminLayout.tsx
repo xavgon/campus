@@ -1,9 +1,18 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ADMIN_NAV_ITEMS } from '@/features/admin/constants';
 import { Button } from '@/shared/components/ui/Button';
+import { IS_ELECTRON } from '@/shared/utils/isElectron';
 
 export const AdminLayout = () => {
   const { pathname } = useLocation();
+
+  if (IS_ELECTRON) {
+    return (
+      <div className="campus-page-enter min-w-0">
+        <Outlet />
+      </div>
+    );
+  }
 
   return (
     <div className="campus-page-enter">

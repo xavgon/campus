@@ -17,7 +17,7 @@ export const PageBackground = ({ background, routeKey }: PageBackgroundProps) =>
       }}
     />
     <div
-      className={`absolute inset-0 z-[1] bg-gradient-to-br ${background.overlayClass ?? 'from-black/80 via-campus-surface-dark/75 to-black/92'}`}
+      className={`absolute inset-0 z-1 bg-linear-to-br ${background.overlayClass ?? 'from-black/80 via-campus-surface-dark/75 to-black/92'}`}
     />
     <TriangleMeshBackground />
   </div>

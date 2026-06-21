@@ -33,7 +33,7 @@ export const PodcastCover = ({ podcast }: PodcastCoverProps) => {
 
   return (
     <div
-      className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${gradient}`}
+      className={`flex h-full w-full items-center justify-center bg-linear-to-br ${gradient}`}
       aria-hidden
     >
       <span className="text-4xl font-bold text-white/20 sm:text-5xl">{initial}</span>

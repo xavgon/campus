@@ -1,13 +1,37 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { usePresenceSession } from '@/features/presence/hooks/usePresenceSession';
 import { CampusNav } from '@/shared/components/campus/CampusNav';
+import { DesktopSidebar } from '@/shared/components/campus/DesktopSidebar';
 import { TriangleMeshBackground } from '@/shared/components/campus/TriangleMeshBackground';
 import { RouteTransition } from '@/shared/components/campus/RouteTransition';
 import { BRAND } from '@/shared/styles/brand';
+import { IS_ELECTRON } from '@/shared/utils/isElectron';
 
 export const MainLayout = () => {
   const { pathname } = useLocation();
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
   usePresenceSession();
+
+  if (IS_ELECTRON) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-campus-surface-dark">
+        {!isLoading && isAuthenticated && user ? (
+          <DesktopSidebar user={user} onLogout={logout} />
+        ) : null}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <main className="campus-desktop-main flex-1 overflow-y-auto px-6 py-6">
+            <RouteTransition routeKey={pathname}>
+              <Outlet />
+            </RouteTransition>
+          </main>
+          <footer className="shrink-0 border-t border-campus-border bg-campus-surface-elevated px-4 py-2 text-center text-xs text-campus-muted">
+            {BRAND.name} · {BRAND.year}
+          </footer>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-campus-surface-dark">

@@ -6,7 +6,11 @@ interface NavIndicatorStyle {
   ready: boolean;
 }
 
-export const useNavIndicator = (...deps: unknown[]) => {
+export const useNavIndicator = (
+  pathname: string,
+  isLoading: boolean,
+  isAuthenticated: boolean,
+) => {
   const navRef = useRef<HTMLElement>(null);
   const [indicator, setIndicator] = useState<NavIndicatorStyle>({
     left: 0,
@@ -44,7 +48,7 @@ export const useNavIndicator = (...deps: unknown[]) => {
       observer.disconnect();
       window.removeEventListener('resize', update);
     };
-  }, deps);
+  }, [pathname, isLoading, isAuthenticated]);
 
   return { navRef, indicator };
 };

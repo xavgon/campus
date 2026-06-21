@@ -153,7 +153,7 @@ export const AdminUsersPage = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  className="!px-2 !py-1.5 text-xs"
+                  className="px-2! py-1.5! text-xs"
                   disabled={busyId === row.id}
                   onClick={() => openEdit(row)}
                 >
@@ -162,7 +162,7 @@ export const AdminUsersPage = () => {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="!px-2 !py-1.5 text-xs text-campus-danger hover:bg-campus-danger/10"
+                  className="px-2! py-1.5! text-xs text-campus-danger hover:bg-campus-danger/10"
                   disabled={busyId === row.id}
                   onClick={() => void onDelete(row)}
                 >

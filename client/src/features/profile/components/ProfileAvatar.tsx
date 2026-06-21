@@ -34,7 +34,7 @@ export const ProfileAvatar = ({ nome, fotoUrl, size = 'lg' }: ProfileAvatarProps
 
   return (
     <div
-      className={`${sizeClass} ${borderClass} flex items-center justify-center rounded-none bg-gradient-to-br from-campus-primary/25 to-campus-surface-elevated font-bold text-campus-primary`}
+      className={`${sizeClass} ${borderClass} flex items-center justify-center rounded-none bg-linear-to-br from-campus-primary/25 to-campus-surface-elevated font-bold text-campus-primary`}
       aria-hidden
     >
       {getInitials(nome)}

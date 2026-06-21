@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { AuthFormSkeleton } from '@/features/auth/components/AuthFormSkeleton';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { LockIcon, MailIcon, UserIcon } from '@/features/auth/components/icons';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAuthForm } from '@/features/auth/hooks/useAuthForm';
 import {
   hasRegisterFieldErrors,
@@ -23,9 +23,10 @@ export const RegisterPage = () => {
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [touched, setTouched] = useState({ nome: false, email: false, password: false });
 
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
+    await register({ nome: nome.trim(), email: email.trim(), password });
+    void navigate('/dashboard');
+  });
 
   const runValidation = (nextNome = nome, nextEmail = email, nextPassword = password) =>
     validateRegisterFields(nextNome, nextEmail, nextPassword);
@@ -38,11 +39,6 @@ export const RegisterPage = () => {
       return next;
     });
   };
-
-  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await register({ nome: nome.trim(), email: email.trim(), password });
-    void navigate('/dashboard');
-  });
 
   const onFormSubmit = (event: FormEvent) => {
     const errors = runValidation();
@@ -72,6 +68,10 @@ export const RegisterPage = () => {
 
   if (isLoading) {
     return <AuthFormSkeleton />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (

@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import { createUser, findUserByEmail, findUserById, mapToPublicUser, type PublicUser } from '../models/user.model';
@@ -19,7 +19,9 @@ export interface AuthResult {
 }
 
 const signToken = (payload: AuthTokenPayload): string =>
-  jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
+  jwt.sign(payload, config.jwtSecret, {
+    expiresIn: config.jwtExpiresIn as SignOptions['expiresIn'],
+  });
 
 export const verifyToken = (token: string): AuthTokenPayload => {
   try {

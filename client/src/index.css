@@ -19,6 +19,11 @@
   --color-campus-on-primary: #0a0a0a;
   --color-campus-danger: #f87171;
   --color-campus-danger-soft: #450a0a80;
+
+  --color-campus-scrollbar-track: #111111;
+  --color-campus-scrollbar-thumb: #3d3d3d;
+  --color-campus-scrollbar-thumb-hover: #f5c518;
+  --color-campus-scrollbar-thumb-active: #d4a800;
 }
 
 @layer base {
@@ -33,6 +38,46 @@
 
   #root {
     @apply min-h-screen;
+  }
+
+  /* Scroll personalizado — Web + Electron (Chromium / Firefox) */
+  html {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-campus-scrollbar-thumb) var(--color-campus-scrollbar-track);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-campus-scrollbar-thumb) var(--color-campus-scrollbar-track);
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background-color: var(--color-campus-scrollbar-track);
+    border-left: 1px solid rgb(255 255 255 / 0.05);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-campus-scrollbar-thumb);
+    border: 2px solid var(--color-campus-scrollbar-track);
+    transition: background-color 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-campus-scrollbar-thumb-hover);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background-color: var(--color-campus-scrollbar-thumb-active);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background-color: var(--color-campus-scrollbar-track);
   }
 }
 
@@ -217,6 +262,62 @@
       padding-left: 0.75rem;
       border-left: 1px solid rgb(255 255 255 / 0.08);
     }
+  }
+
+  .campus-desktop-sidebar {
+    @apply flex h-full w-60 shrink-0 flex-col border-r border-campus-border bg-campus-surface-elevated;
+  }
+
+  .campus-desktop-sidebar__brand {
+    @apply flex shrink-0 items-center gap-3 border-b border-campus-border px-4 py-4 transition hover:bg-black/20;
+  }
+
+  .campus-desktop-sidebar__nav {
+    @apply flex flex-col gap-1 overflow-y-auto px-3 py-3;
+  }
+
+  .campus-desktop-sidebar__nav--compact {
+    @apply flex-none py-0 pb-2;
+  }
+
+  .campus-desktop-sidebar__section {
+    @apply shrink-0 px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-campus-muted;
+  }
+
+  .campus-desktop-sidebar__link {
+    @apply block rounded-none border border-transparent px-3 py-2.5 text-sm font-medium text-campus-muted transition;
+  }
+
+  .campus-desktop-sidebar__link:hover {
+    @apply border-campus-border/60 bg-black/25 text-campus-foreground;
+  }
+
+  .campus-desktop-sidebar__link--sub {
+    @apply py-2;
+  }
+
+  .campus-desktop-sidebar__link--active {
+    @apply border-campus-primary/50 bg-campus-primary/10 font-bold text-campus-primary;
+  }
+
+  .campus-desktop-sidebar__footer {
+    @apply mt-auto shrink-0 space-y-2 border-t border-campus-border p-3;
+  }
+
+  .campus-desktop-sidebar__profile {
+    @apply flex items-center gap-2.5 rounded-none border border-campus-border/80 bg-black/30 px-2.5 py-2 transition hover:border-campus-primary/45 hover:bg-black/45;
+  }
+
+  .campus-desktop-sidebar__profile--active {
+    @apply border-campus-primary/60 bg-campus-primary/10;
+  }
+
+  .campus-desktop-sidebar__logout {
+    @apply w-full rounded-none border border-campus-border/80 bg-black/35 px-3 py-2 text-sm font-bold text-campus-foreground transition hover:border-campus-primary/55 hover:bg-campus-primary/10 hover:text-campus-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-campus-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black;
+  }
+
+  .campus-desktop-main {
+    @apply bg-campus-surface-dark;
   }
 
   .campus-modal-root {

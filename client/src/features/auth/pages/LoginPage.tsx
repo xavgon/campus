@@ -1,10 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { AuthFormSkeleton } from '@/features/auth/components/AuthFormSkeleton';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
 import { DEFAULT_ADMIN_LOGIN, REMEMBER_EMAIL_KEY } from '@/features/auth/constants';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useAuthForm } from '@/features/auth/hooks/useAuthForm';
 import {
   hasLoginFieldErrors,
@@ -19,26 +19,31 @@ import { Field } from '@/shared/components/campus/Field';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(() => {
+    const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
+    if (saved) return saved;
+    return import.meta.env.DEV ? DEFAULT_ADMIN_LOGIN.email : '';
+  });
+  const [password, setPassword] = useState(() =>
+    import.meta.env.DEV && !localStorage.getItem(REMEMBER_EMAIL_KEY)
+      ? DEFAULT_ADMIN_LOGIN.password
+      : '',
+  );
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem(REMEMBER_EMAIL_KEY));
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [touched, setTouched] = useState({ email: false, password: false });
   const [forgotOpen, setForgotOpen] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
-    if (saved) {
-      setEmail(saved);
-      setRememberMe(true);
-      return;
+  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
+    await login({ email: email.trim(), password });
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
+    } else {
+      localStorage.removeItem(REMEMBER_EMAIL_KEY);
     }
-    if (import.meta.env.DEV) {
-      setEmail(DEFAULT_ADMIN_LOGIN.email);
-      setPassword(DEFAULT_ADMIN_LOGIN.password);
-    }
-  }, []);
+    void navigate('/dashboard');
+  });
 
   const runValidation = (nextEmail = email, nextPassword = password) =>
     validateLoginFields(nextEmail, nextPassword);
@@ -51,20 +56,6 @@ export const LoginPage = () => {
       return next;
     });
   };
-
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await login({ email: email.trim(), password });
-    if (rememberMe) {
-      localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
-    } else {
-      localStorage.removeItem(REMEMBER_EMAIL_KEY);
-    }
-    void navigate('/dashboard');
-  });
 
   const onFormSubmit = (event: FormEvent) => {
     const errors = runValidation();
@@ -90,6 +81,10 @@ export const LoginPage = () => {
 
   if (isLoading) {
     return <AuthFormSkeleton />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return (

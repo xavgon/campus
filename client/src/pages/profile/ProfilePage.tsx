@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';

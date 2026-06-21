@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { CampusNavLink } from '@/shared/components/campus/CampusNavLink';
 import { NavBrand } from '@/shared/components/campus/NavBrand';
 import { NavUserMenu } from '@/shared/components/campus/NavUserMenu';

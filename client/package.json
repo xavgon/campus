@@ -11,7 +11,27 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "npm run build && electron ."
+    "electron:build": "npm run build && electron .",
+    "electron:pack": "npm run build && electron-builder --win",
+    "electron:dist": "npm run build && electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "co.ao.campus.app",
+    "productName": "CAMPUS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {
     "axios": "^1.17.0",
@@ -28,6 +48,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^10.0.3",
     "electron": "^42.3.2",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

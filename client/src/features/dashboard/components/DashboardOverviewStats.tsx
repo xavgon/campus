@@ -1,6 +1,6 @@
 import type { PodcastStats } from '@/features/podcasts/utils/computePodcastStats';
 
-interface DashboardOverviewStatsProps extends PodcastStats {}
+type DashboardOverviewStatsProps = PodcastStats;
 
 export const DashboardOverviewStats = ({
   total,
