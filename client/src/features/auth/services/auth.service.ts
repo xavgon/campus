@@ -26,3 +26,12 @@ export const requestPasswordReset = async (email: string) => {
   const { data } = await api.post<ApiResponse<null>>('/auth/forgot-password', { email });
   return data;
 };
+
+export const uploadAvatar = async (file: File) => {
+  const formData = new FormData();
+  formData.append('photo', file);
+  const { data } = await api.put<ApiResponse<{ user: User }>>('/auth/profile/photo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};

@@ -17,4 +17,5 @@ export const config = {
   maxFileSizeMb: parseNumber(process.env.MAX_FILE_SIZE_MB, 50),
   uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
+  ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
 } as const;

@@ -1,5 +1,154 @@
 import { getPool } from '../database/pool';
 
+// ─── Tipos para o utilizador (área autenticada) ───────────────────────────────
+
+export interface Podcast {
+  id: string;
+  title: string;
+  description: string | null;
+  audio_url: string | null;
+  cover_url: string | null;
+  original_size: number | null;
+  compressed_size: number | null;
+  compression_ratio: number | null;
+  category_id: number | null;
+  category_name: string | null;
+  user_id: string;
+  author_nome: string;
+  created_at: string;
+}
+
+export interface CreatePodcastData {
+  title: string;
+  description?: string | null;
+  audio_url?: string | null;
+  cover_url?: string | null;
+  original_size?: number | null;
+  category_id?: number | null;
+  user_id: string;
+}
+
+const podcastSelect = `
+  p.id, p.title, p.description,
+  p.audio_url, p.cover_url,
+  p.original_size, p.compressed_size, p.compression_ratio,
+  p.category_id, c.name AS category_name,
+  p.user_id, u.nome AS author_nome,
+  p.created_at
+`;
+
+const mapPodcast = (row: Podcast & { created_at: Date }): Podcast => ({
+  ...row,
+  created_at: row.created_at.toISOString(),
+});
+
+// ─── Queries do utilizador ────────────────────────────────────────────────────
+
+export const listPodcasts = async (opts?: {
+  search?: string;
+  category_id?: number;
+}): Promise<Podcast[]> => {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (opts?.search) {
+    conditions.push(`(p.title ILIKE $${idx} OR p.description ILIKE $${idx})`);
+    values.push(`%${opts.search}%`);
+    idx++;
+  }
+
+  if (opts?.category_id) {
+    conditions.push(`p.category_id = $${idx++}`);
+    values.push(opts.category_id);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const result = await getPool().query(
+    `SELECT ${podcastSelect}
+     FROM podcasts p
+     INNER JOIN users u ON u.id = p.user_id
+     LEFT JOIN categories c ON c.id = p.category_id
+     ${where}
+     ORDER BY p.created_at DESC`,
+    values,
+  );
+
+  return result.rows.map(mapPodcast);
+};
+
+export const findPodcastById = async (id: string): Promise<Podcast | null> => {
+  const result = await getPool().query(
+    `SELECT ${podcastSelect}
+     FROM podcasts p
+     INNER JOIN users u ON u.id = p.user_id
+     LEFT JOIN categories c ON c.id = p.category_id
+     WHERE p.id = $1`,
+    [id],
+  );
+
+  if (!result.rows[0]) return null;
+  return mapPodcast(result.rows[0]);
+};
+
+export const insertPodcast = async (data: CreatePodcastData): Promise<Podcast> => {
+  const result = await getPool().query(
+    `INSERT INTO podcasts (title, description, audio_url, cover_url, original_size, category_id, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING id`,
+    [
+      data.title,
+      data.description ?? null,
+      data.audio_url ?? null,
+      data.cover_url ?? null,
+      data.original_size ?? null,
+      data.category_id ?? null,
+      data.user_id,
+    ],
+  );
+
+  const podcast = await findPodcastById(result.rows[0].id as string);
+  if (!podcast) throw new Error('Erro ao criar podcast');
+  return podcast;
+};
+
+export const updatePodcastCompression = async (
+  id: string,
+  compressedSize: number,
+  compressionRatio: number,
+  compressedAudioUrl: string,
+): Promise<void> => {
+  await getPool().query(
+    `UPDATE podcasts
+     SET compressed_size = $1, compression_ratio = $2, audio_url = $3
+     WHERE id = $4`,
+    [compressedSize, compressionRatio, compressedAudioUrl, id],
+  );
+};
+
+export const deletePodcastAndReturnPath = async (
+  id: string,
+  userId: string,
+  isAdmin: boolean,
+): Promise<{ audio_url: string | null; cover_url: string | null } | null> => {
+  const check = await getPool().query(
+    'SELECT audio_url, cover_url, user_id FROM podcasts WHERE id = $1',
+    [id],
+  );
+
+  const row = check.rows[0] as
+    | { audio_url: string | null; cover_url: string | null; user_id: string }
+    | undefined;
+
+  if (!row) return null;
+  if (!isAdmin && row.user_id !== userId) return null;
+
+  await getPool().query('DELETE FROM podcasts WHERE id = $1', [id]);
+
+  return { audio_url: row.audio_url, cover_url: row.cover_url };
+};
+
 export interface AdminPodcastListItem {
   id: string;
   title: string;

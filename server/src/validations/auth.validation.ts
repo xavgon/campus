@@ -63,6 +63,47 @@ export const validateLogin = (body: unknown): LoginInput => {
   return { email, password };
 };
 
+export interface UpdateProfileInput {
+  nome: string;
+}
+
+export interface UpdatePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export const validateUpdateProfile = (body: unknown): UpdateProfileInput => {
+  if (!body || typeof body !== 'object') throw new AppError('Dados inválidos');
+  const data = body as Record<string, unknown>;
+  const nome = requireString(data.nome, 'Nome');
+  if (nome.length < 2) throw new AppError('Nome deve ter pelo menos 2 caracteres');
+  return { nome };
+};
+
+export const validateUpdatePassword = (body: unknown): UpdatePasswordInput => {
+  if (!body || typeof body !== 'object') throw new AppError('Dados inválidos');
+  const data = body as Record<string, unknown>;
+  const currentPassword = requireString(data.currentPassword, 'Password actual');
+  const newPassword = requireString(data.newPassword, 'Nova password');
+  if (newPassword.length < 6) throw new AppError('Nova password deve ter pelo menos 6 caracteres');
+  if (currentPassword === newPassword) throw new AppError('A nova password deve ser diferente da actual');
+  return { currentPassword, newPassword };
+};
+
+export interface ResetPasswordInput {
+  token: string;
+  newPassword: string;
+}
+
+export const validateResetPassword = (body: unknown): ResetPasswordInput => {
+  if (!body || typeof body !== 'object') throw new AppError('Dados inválidos');
+  const data = body as Record<string, unknown>;
+  const token = requireString(data.token, 'Token');
+  const newPassword = requireString(data.newPassword, 'Nova password');
+  if (newPassword.length < 6) throw new AppError('Nova password deve ter pelo menos 6 caracteres');
+  return { token, newPassword };
+};
+
 export const validateForgotPassword = (body: unknown): ForgotPasswordInput => {
   if (!body || typeof body !== 'object') {
     throw new AppError('Dados inválidos');

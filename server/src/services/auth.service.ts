@@ -1,8 +1,10 @@
 import bcrypt from 'bcrypt';
-import jwt, { type SignOptions } from 'jsonwebtoken';
+import fs from 'fs';
+import jwt from 'jsonwebtoken';
+import path from 'path';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
-import { createUser, findUserByEmail, findUserById, mapToPublicUser, type PublicUser } from '../models/user.model';
+import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserAvatar, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
 import type { UserRole } from '../types/roles';
 
 const SALT_ROUNDS = 10;
@@ -69,19 +71,92 @@ export const login = async (email: string, password: string): Promise<AuthResult
   return { token, user: publicUser };
 };
 
-/** Resposta genérica — não revela se o email existe (segurança). */
+// ─── Reset de password ────────────────────────────────────────────────────────
+
+interface ResetTokenPayload {
+  userId: string;
+  type: 'password-reset';
+}
+
+const RESET_TOKEN_EXPIRY = '1h';
+
+/** Gera token de reset e imprime o link no console (substitui SMTP). */
 export const requestPasswordReset = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
-  if (user) {
-    // TODO: enviar email com token de reset (SMTP / serviço de email)
-    console.info(`[CAMPUS] Pedido de reset de password para: ${email}`);
+  if (!user) return; // resposta genérica — não revela se o email existe
+
+  const payload: ResetTokenPayload = { userId: user.id, type: 'password-reset' };
+  const token = jwt.sign(payload, config.jwtSecret, { expiresIn: RESET_TOKEN_EXPIRY });
+  const resetLink = `${config.clientUrl}/reset-password?token=${token}`;
+
+  // Em produção: enviar email com resetLink via SMTP/SendGrid
+  console.info('[CAMPUS] ─── RESET DE PASSWORD ───────────────────────────');
+  console.info(`[CAMPUS] Email : ${email}`);
+  console.info(`[CAMPUS] Link  : ${resetLink}`);
+  console.info(`[CAMPUS] Expira: 1 hora`);
+  console.info('[CAMPUS] ─────────────────────────────────────────────────');
+};
+
+/** Valida token de reset e actualiza a password. */
+export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+  let payload: ResetTokenPayload;
+
+  try {
+    const decoded = jwt.verify(token, config.jwtSecret) as ResetTokenPayload;
+    if (decoded.type !== 'password-reset') {
+      throw new AppError('Token inválido', 400);
+    }
+    payload = decoded;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Token inválido ou expirado', 400);
   }
+
+  const user = await findUserById(payload.userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await updateUserPassword(payload.userId, hash);
+};
+
+export const updateAvatar = async (userId: string, newFilePath: string): Promise<PublicUser> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  // apaga foto anterior se existir
+  if (user.foto_perfil) {
+    const oldPath = path.join(__dirname, '..', '..', user.foto_perfil);
+    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+  }
+
+  const updated = await updateUserAvatar(userId, newFilePath);
+  if (!updated) throw new AppError('Erro ao actualizar foto', 500);
+  return updated;
 };
 
 export const getProfile = async (userId: string): Promise<PublicUser> => {
   const user = await findUserById(userId);
-  if (!user) {
-    throw new AppError('Utilizador não encontrado', 404);
-  }
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
   return mapToPublicUser(user);
+};
+
+export const updateProfile = async (userId: string, nome: string): Promise<PublicUser> => {
+  const updated = await updateUserProfile(userId, nome);
+  if (!updated) throw new AppError('Utilizador não encontrado', 404);
+  return updated;
+};
+
+export const updatePassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  const valid = await bcrypt.compare(currentPassword, user.password);
+  if (!valid) throw new AppError('Password actual incorrecta', 401);
+
+  const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await updateUserPassword(userId, hash);
 };

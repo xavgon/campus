@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
-import { useAuth } from '@/features/auth/hooks/useAuth';
+import { uploadAvatar } from '@/features/auth/services/auth.service';
+import { useAuth } from '@/features/auth/context/AuthContext';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -17,7 +18,10 @@ import { Field } from '@/shared/components/campus/Field';
 import { Button } from '@/shared/components/ui/Button';
 
 export const ProfilePage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const [nome, setNome] = useState('');
   const [nameErrors, setNameErrors] = useState<ProfileNameErrors>({});
@@ -64,6 +68,22 @@ export const ProfilePage = () => {
     );
   };
 
+  const onAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAvatarError(null);
+    setAvatarLoading(true);
+    try {
+      const result = await uploadAvatar(file);
+      updateUser({ foto_perfil: result.data.user.foto_perfil });
+    } catch {
+      setAvatarError('Erro ao actualizar a foto. Tenta novamente.');
+    } finally {
+      setAvatarLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const onPasswordSubmit = (event: FormEvent) => {
     event.preventDefault();
     const errors = validateChangePassword(currentPassword, newPassword, confirmPassword);
@@ -107,17 +127,25 @@ export const ProfilePage = () => {
               </dd>
             </div>
           </dl>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={onAvatarChange}
+          />
           <Button
             type="button"
             variant="outline"
             fullWidth
             className="mt-6"
-            disabled
-            title="Disponível no Módulo 6"
+            disabled={avatarLoading}
+            onClick={() => fileInputRef.current?.click()}
           >
-            Alterar foto
+            {avatarLoading ? 'A enviar…' : 'Alterar foto'}
           </Button>
-          <p className="mt-2 text-xs text-campus-muted">JPG ou PNG · máx. 2 MB (em breve)</p>
+          {avatarError && <p className="mt-2 text-xs text-campus-danger">{avatarError}</p>}
+          <p className="mt-2 text-xs text-campus-muted">JPG, PNG ou WebP · máx. 5 MB</p>
         </aside>
 
         <div className="space-y-6">

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service';
 import { sendSuccess } from '../utils/apiResponse';
-import { validateForgotPassword, validateLogin, validateRegister } from '../validations/auth.validation';
+import { validateForgotPassword, validateLogin, validateRegister, validateResetPassword, validateUpdatePassword, validateUpdateProfile } from '../validations/auth.validation';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   const input = validateRegister(req.body);
@@ -18,11 +18,28 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   const input = validateForgotPassword(req.body);
   await authService.requestPasswordReset(input.email);
-  sendSuccess(
-    res,
-    null,
-    'Se o email existir, receberás instruções para redefinir a password.',
-  );
+  sendSuccess(res, null, 'Se o email existir, receberás instruções para redefinir a password.');
+};
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const { token, newPassword } = validateResetPassword(req.body);
+  await authService.resetPassword(token, newPassword);
+  sendSuccess(res, null, 'Password redefinida com sucesso. Podes fazer login.');
+};
+
+export const updateAvatar = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  if (!req.file) {
+    res.status(400).json({ success: false, message: 'Nenhuma imagem enviada', data: null });
+    return;
+  }
+  const filePath = `uploads/avatars/${req.file.filename}`;
+  const user = await authService.updateAvatar(userId, filePath);
+  sendSuccess(res, { user }, 'Foto de perfil actualizada com sucesso');
 };
 
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
@@ -33,4 +50,26 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   }
   const user = await authService.getProfile(userId);
   sendSuccess(res, { user });
+};
+
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const { nome } = validateUpdateProfile(req.body);
+  const user = await authService.updateProfile(userId, nome);
+  sendSuccess(res, { user }, 'Perfil actualizado com sucesso');
+};
+
+export const updatePassword = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const { currentPassword, newPassword } = validateUpdatePassword(req.body);
+  await authService.updatePassword(userId, currentPassword, newPassword);
+  sendSuccess(res, null, 'Password alterada com sucesso');
 };
