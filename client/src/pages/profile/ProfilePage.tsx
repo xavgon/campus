@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
-import { uploadAvatar } from '@/features/auth/services/auth.service';
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { uploadAvatar, updatePassword, updateProfile } from '@/features/auth/services/auth.service';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -14,7 +14,9 @@ import {
   type ProfileNameErrors,
 } from '@/features/profile/utils/profile.validation';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
+import { Alert } from '@/shared/components/campus/Alert';
 import { Field } from '@/shared/components/campus/Field';
+import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
 export const ProfilePage = () => {
@@ -26,6 +28,8 @@ export const ProfilePage = () => {
   const [nome, setNome] = useState('');
   const [nameErrors, setNameErrors] = useState<ProfileNameErrors>({});
   const [nameNotice, setNameNotice] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSaving, setNameSaving] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -34,6 +38,8 @@ export const ProfilePage = () => {
   const [showNew, setShowNew] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<ChangePasswordErrors>({});
   const [passwordNotice, setPasswordNotice] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   useEffect(() => {
     if (user?.nome) setNome(user.nome);
@@ -50,11 +56,12 @@ export const ProfilePage = () => {
   const memberSince = formatMemberSince(user.created_at);
   const nomeChanged = nome.trim() !== user.nome;
 
-  const onNameSubmit = (event: FormEvent) => {
+  const onNameSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const errors = validateProfileName(nome);
     setNameErrors(errors);
     setNameNotice(null);
+    setNameError(null);
 
     if (hasFieldErrors(errors)) return;
 
@@ -63,9 +70,16 @@ export const ProfilePage = () => {
       return;
     }
 
-    setNameNotice(
-      'A gravação do nome será activada com a API de perfil (Módulo 6). Os dados foram validados localmente.',
-    );
+    setNameSaving(true);
+    try {
+      const result = await updateProfile(nome.trim());
+      updateUser({ nome: result.data.user.nome });
+      setNameNotice('Nome actualizado com sucesso.');
+    } catch (err) {
+      setNameError(getApiErrorMessage(err));
+    } finally {
+      setNameSaving(false);
+    }
   };
 
   const onAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,28 +90,35 @@ export const ProfilePage = () => {
     try {
       const result = await uploadAvatar(file);
       updateUser({ foto_perfil: result.data.user.foto_perfil });
-    } catch {
-      setAvatarError('Erro ao actualizar a foto. Tenta novamente.');
+    } catch (err) {
+      setAvatarError(getApiErrorMessage(err));
     } finally {
       setAvatarLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const onPasswordSubmit = (event: FormEvent) => {
+  const onPasswordSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const errors = validateChangePassword(currentPassword, newPassword, confirmPassword);
     setPasswordErrors(errors);
     setPasswordNotice(null);
+    setPasswordError(null);
 
     if (hasFieldErrors(errors)) return;
 
-    setPasswordNotice(
-      'A alteração de password será activada com a API de perfil (Módulo 6). Os campos estão prontos.',
-    );
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    setPasswordSaving(true);
+    try {
+      await updatePassword(currentPassword, newPassword);
+      setPasswordNotice('Password alterada com sucesso.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setPasswordError(getApiErrorMessage(err));
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   return (
@@ -154,11 +175,12 @@ export const ProfilePage = () => {
             description="O teu nome aparece no dashboard e nos episódios que publicares."
           >
             <form className="space-y-5" onSubmit={onNameSubmit} noValidate>
+              {nameError && <Alert title="Erro ao guardar" message={nameError} />}
               {nameNotice && (
                 <ProfileNotice
                   title="Informação"
                   message={nameNotice}
-                  variant={nameNotice.includes('validados') ? 'success' : 'info'}
+                  variant={nameNotice.includes('sucesso') ? 'success' : 'info'}
                 />
               )}
               <Field
@@ -194,8 +216,8 @@ export const ProfilePage = () => {
                 >
                   Repor
                 </Button>
-                <Button type="submit" disabled={!nomeChanged}>
-                  Guardar alterações
+                <Button type="submit" disabled={!nomeChanged || nameSaving}>
+                  {nameSaving ? 'A guardar…' : 'Guardar alterações'}
                 </Button>
               </div>
             </form>
@@ -206,6 +228,7 @@ export const ProfilePage = () => {
             description="Mantém a tua conta protegida com uma password forte."
           >
             <form className="space-y-5" onSubmit={onPasswordSubmit} noValidate>
+              {passwordError && <Alert title="Erro ao alterar password" message={passwordError} />}
               {passwordNotice && (
                 <ProfileNotice title="Informação" message={passwordNotice} variant="success" />
               )}
@@ -263,8 +286,8 @@ export const ProfilePage = () => {
                 />
               </div>
               <div className="flex justify-end">
-                <Button type="submit" variant="secondary">
-                  Atualizar password
+                <Button type="submit" variant="secondary" disabled={passwordSaving}>
+                  {passwordSaving ? 'A guardar…' : 'Atualizar password'}
                 </Button>
               </div>
             </form>

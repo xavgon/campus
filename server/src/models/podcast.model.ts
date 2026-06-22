@@ -53,7 +53,9 @@ export const listPodcasts = async (opts?: {
   let idx = 1;
 
   if (opts?.search) {
-    conditions.push(`(p.title ILIKE $${idx} OR p.description ILIKE $${idx})`);
+    conditions.push(
+      `(p.title ILIKE $${idx} OR p.description ILIKE $${idx} OR u.nome ILIKE $${idx})`,
+    );
     values.push(`%${opts.search}%`);
     idx++;
   }

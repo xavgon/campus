@@ -320,6 +320,119 @@
     @apply bg-campus-surface-dark;
   }
 
+  /* Electron — janela frameless + barra de título CAMPUS */
+  html.campus-electron,
+  html.campus-electron body,
+  html.campus-electron #root {
+    @apply h-full overflow-hidden;
+  }
+
+  .campus-electron-shell {
+    @apply border border-campus-border/40;
+  }
+
+  .campus-desktop-titlebar {
+    @apply flex h-9 shrink-0 select-none items-stretch justify-between border-b border-campus-border bg-campus-surface-elevated;
+    -webkit-app-region: drag;
+  }
+
+  .campus-desktop-titlebar__drag {
+    @apply flex min-w-0 flex-1 items-center gap-2.5 px-3;
+  }
+
+  .campus-desktop-titlebar__logo {
+    @apply shrink-0 object-contain;
+  }
+
+  .campus-desktop-titlebar__brand {
+    @apply text-xs font-bold tracking-[0.12em];
+  }
+
+  .campus-desktop-titlebar__controls {
+    @apply flex shrink-0 items-stretch;
+    -webkit-app-region: no-drag;
+  }
+
+  .campus-desktop-titlebar__btn {
+    @apply flex w-11 items-center justify-center text-campus-accent transition hover:bg-white/10 hover:text-campus-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-campus-primary;
+  }
+
+  .campus-desktop-titlebar__btn--close:hover {
+    @apply bg-red-600 text-white;
+  }
+
+  .campus-audio-player {
+    @apply space-y-4 p-5 sm:p-6;
+  }
+
+  .campus-audio-player__error {
+    @apply text-sm text-campus-danger;
+  }
+
+  .campus-audio-player__progress {
+    @apply relative pt-1;
+  }
+
+  .campus-audio-player__seek {
+    @apply relative z-10 w-full cursor-pointer appearance-none bg-transparent;
+    height: 1.25rem;
+  }
+
+  .campus-audio-player__seek::-webkit-slider-thumb {
+    appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    background: var(--color-campus-primary);
+    border: 2px solid var(--color-campus-surface-elevated);
+  }
+
+  .campus-audio-player__seek::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    background: var(--color-campus-primary);
+    border: 2px solid var(--color-campus-surface-elevated);
+    border-radius: 0;
+  }
+
+  .campus-audio-player__progress-track {
+    @apply pointer-events-none absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 bg-campus-border;
+  }
+
+  .campus-audio-player__progress-fill {
+    @apply block h-full bg-campus-primary transition-[width] duration-150 ease-linear;
+  }
+
+  .campus-audio-player__times {
+    @apply flex justify-between text-xs tabular-nums text-campus-muted;
+  }
+
+  .campus-audio-player__controls {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .campus-audio-player__btn {
+    @apply rounded-none border border-campus-border bg-black/35 px-3 py-2 text-xs font-bold text-campus-foreground transition hover:border-campus-primary/55 hover:text-campus-primary disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .campus-audio-player__btn--primary {
+    @apply min-w-[5.5rem] border-campus-primary/50 bg-campus-primary/15 text-campus-primary hover:bg-campus-primary/25;
+  }
+
+  .campus-audio-player__volume {
+    @apply ml-auto flex min-w-[8rem] flex-1 items-center gap-2 text-xs font-bold text-campus-muted sm:min-w-[10rem] sm:flex-none;
+  }
+
+  .campus-audio-player__volume-slider {
+    @apply h-1 flex-1 cursor-pointer appearance-none bg-campus-border;
+  }
+
+  .campus-audio-player__volume-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 0.75rem;
+    height: 0.75rem;
+    background: var(--color-campus-accent);
+  }
+
   .campus-modal-root {
     position: fixed;
     inset: 0;

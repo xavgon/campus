@@ -1,3 +1,6 @@
+import type { User } from '@/features/auth/types/auth.types';
+import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
+
 export type DashboardShortcutIcon = 'podcasts' | 'publish' | 'explore' | 'profile';
 
 export interface DashboardShortcut {
@@ -6,6 +9,7 @@ export interface DashboardShortcut {
   description: string;
   icon: DashboardShortcutIcon;
   accent?: boolean;
+  requiresPublish?: boolean;
 }
 
 export const DASHBOARD_SHORTCUTS: DashboardShortcut[] = [
@@ -21,6 +25,7 @@ export const DASHBOARD_SHORTCUTS: DashboardShortcut[] = [
     description: 'Áudio, capa e metadados num só fluxo.',
     icon: 'publish',
     accent: true,
+    requiresPublish: true,
   },
   {
     to: '/explorar',
@@ -35,3 +40,8 @@ export const DASHBOARD_SHORTCUTS: DashboardShortcut[] = [
     icon: 'profile',
   },
 ];
+
+export const getDashboardShortcuts = (user: User | null): DashboardShortcut[] =>
+  DASHBOARD_SHORTCUTS.filter(
+    (shortcut) => !shortcut.requiresPublish || canPublishPodcasts(user),
+  );

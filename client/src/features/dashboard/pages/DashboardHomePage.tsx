@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { isAdminUser } from '@/features/auth/utils/isAdmin';
-import { DASHBOARD_SHORTCUTS } from '@/features/dashboard/constants';
+import { getDashboardShortcuts } from '@/features/dashboard/constants';
 import { DashboardAttentionList } from '@/features/dashboard/components/DashboardAttentionList';
 import { DashboardOverviewStats } from '@/features/dashboard/components/DashboardOverviewStats';
 import { DashboardRecentItem } from '@/features/dashboard/components/DashboardRecentItem';
@@ -130,7 +130,7 @@ export const DashboardHomePage = () => {
               Atalhos
             </h2>
             <div className="flex flex-col gap-3">
-              {DASHBOARD_SHORTCUTS.map((shortcut) => (
+              {getDashboardShortcuts(user).map((shortcut) => (
                 <DashboardShortcutCard key={shortcut.to} shortcut={shortcut} />
               ))}
             </div>

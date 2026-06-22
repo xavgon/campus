@@ -16,7 +16,7 @@ export const filterAndSortPodcasts = (
     if (categoryId && podcast.categoryId !== categoryId) return false;
     if (!query) return true;
     const haystack = normalize(
-      `${podcast.title} ${podcast.description} ${podcast.categoryName}`,
+      `${podcast.title} ${podcast.description} ${podcast.categoryName} ${podcast.authorName}`,
     );
     return haystack.includes(query);
   });

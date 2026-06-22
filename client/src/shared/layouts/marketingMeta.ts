@@ -1,4 +1,4 @@
-export type MarketingRoute = '/' | '/explorar' | '/login' | '/register';
+export type MarketingRoute = '/' | '/explorar' | '/login' | '/register' | '/reset-password';
 
 export interface MarketingMeta {
   eyebrow: string;
@@ -35,6 +35,11 @@ export const MARKETING_BACKGROUNDS: Record<MarketingRoute, MarketingBackground> 
     position: 'center top',
     overlayClass: 'from-black/85 via-campus-surface-dark/80 to-black/90',
   },
+  '/reset-password': {
+    src: '/images/bg-login.png',
+    position: 'center',
+    overlayClass: 'from-black/88 via-black/70 to-campus-surface-dark/92',
+  },
 };
 
 export const getMarketingBackground = (path: string): MarketingBackground => {
@@ -67,7 +72,16 @@ export const MARKETING_META: Record<MarketingRoute, MarketingMeta> = {
     title: 'Começa a publicar em minutos.',
     description: 'Registo gratuito para explorares a plataforma e preparares o teu primeiro episódio.',
   },
+  '/reset-password': {
+    eyebrow: 'Recuperação',
+    title: 'Define uma nova password.',
+    description: 'O link é válido por 1 hora. Depois de guardares, inicia sessão com a nova password.',
+  },
 };
 
 export const isMarketingRoute = (path: string): path is MarketingRoute =>
-  path === '/' || path === '/explorar' || path === '/login' || path === '/register';
+  path === '/' ||
+  path === '/explorar' ||
+  path === '/login' ||
+  path === '/register' ||
+  path === '/reset-password';

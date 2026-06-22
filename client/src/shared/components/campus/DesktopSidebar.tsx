@@ -4,7 +4,7 @@ import type { User } from '@/features/auth/types/auth.types';
 import { isAdminUser } from '@/features/auth/utils/isAdmin';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
 import { NavUserName } from '@/shared/components/campus/NavUserName';
-import { APP_NAV_ITEMS, type NavItem } from '@/shared/navigation/navConfig';
+import { getAppNavItems, type NavItem } from '@/shared/navigation/navConfig';
 import { BRAND } from '@/shared/styles/brand';
 
 interface DesktopSidebarProps {
@@ -67,7 +67,7 @@ export const DesktopSidebar = ({ user, onLogout }: DesktopSidebarProps) => {
       </NavLink>
 
       <nav className="campus-desktop-sidebar__nav" aria-label="Área principal">
-        {APP_NAV_ITEMS.map((item) => (
+        {getAppNavItems(user).map((item) => (
           <SidebarLink key={item.to} item={item} />
         ))}
       </nav>

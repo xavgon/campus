@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { FileDropzone } from '@/features/podcasts/components/FileDropzone';
 import {
@@ -9,6 +9,7 @@ import {
   PODCAST_CATEGORIES,
   PUBLISH_LIMITS,
 } from '@/features/podcasts/constants';
+import { createPodcast } from '@/features/podcasts/services/podcast.service';
 import {
   hasPublishErrors,
   validatePublishForm,
@@ -17,11 +18,14 @@ import {
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
+import { Alert } from '@/shared/components/campus/Alert';
 import { Field } from '@/shared/components/campus/Field';
 import { TextAreaField } from '@/shared/components/campus/TextAreaField';
+import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
 export const PublishPage = () => {
+  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -31,6 +35,7 @@ export const PublishPage = () => {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<PublishFormErrors>({});
   const [notice, setNotice] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -55,6 +60,7 @@ export const PublishPage = () => {
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setNotice(null);
+    setSubmitError(null);
 
     const nextErrors = validatePublishForm({
       title,
@@ -69,11 +75,22 @@ export const PublishPage = () => {
     if (hasPublishErrors(nextErrors)) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsSubmitting(false);
-    setNotice(
-      'Validação concluída. O envio multipart para a API será activado no Módulo 2 (compressão FFmpeg a seguir).',
-    );
+    try {
+      await createPodcast({
+        title,
+        description,
+        categoryId,
+        audio: audio!,
+        cover,
+      });
+      navigate('/podcasts', {
+        state: { notice: 'Episódio publicado. A compressão do áudio pode demorar alguns minutos.' },
+      });
+    } catch (err) {
+      setSubmitError(getApiErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,6 +102,7 @@ export const PublishPage = () => {
       />
 
       <form className="space-y-6" onSubmit={onSubmit} noValidate>
+        {submitError && <Alert title="Erro ao publicar" message={submitError} />}
         {notice && (
           <ProfileNotice title="Quase lá" message={notice} variant="success" />
         )}
@@ -225,7 +243,7 @@ export const PublishPage = () => {
             </div>
 
             <div className="campus-panel flex flex-col gap-3 p-6">
-              <AuthSubmitButton loading={isSubmitting} loadingLabel="A preparar envio…">
+              <AuthSubmitButton loading={isSubmitting} loadingLabel="A enviar…">
                 Publicar episódio
               </AuthSubmitButton>
               <Link to="/podcasts">

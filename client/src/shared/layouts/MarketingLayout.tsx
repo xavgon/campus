@@ -9,6 +9,7 @@ import {
   isMarketingRoute,
   MARKETING_META,
 } from '@/shared/layouts/marketingMeta';
+import { IS_ELECTRON } from '@/shared/utils/isElectron';
 
 export const MarketingLayout = () => {
   const { pathname } = useLocation();
@@ -17,7 +18,11 @@ export const MarketingLayout = () => {
   const background = getMarketingBackground(pathname);
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-campus-surface-dark">
+    <div
+      className={`relative flex flex-col overflow-x-hidden bg-campus-surface-dark ${
+        IS_ELECTRON ? 'h-full overflow-y-auto' : 'min-h-screen'
+      }`}
+    >
       <PageBackground background={background} routeKey={route} />
 
       <div
@@ -25,10 +30,14 @@ export const MarketingLayout = () => {
         aria-hidden
       />
 
-      <CampusNav />
+      {!IS_ELECTRON && <CampusNav />}
 
-      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-5 py-8 sm:px-8 lg:flex-row lg:items-center lg:gap-16 lg:py-12">
-        <aside className="flex flex-1 flex-col justify-center lg:max-w-xl">
+      <div
+        className={`relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-5 py-8 sm:px-8 lg:flex-row lg:items-center lg:gap-16 ${
+          IS_ELECTRON ? 'py-6 lg:py-8' : 'lg:py-12'
+        }`}
+      >
+        <aside className={`flex flex-1 flex-col justify-center lg:max-w-xl ${IS_ELECTRON ? 'hidden lg:flex' : ''}`}>
           <RouteTransition routeKey={route} variant="aside">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-campus-primary">
               {meta.eyebrow}

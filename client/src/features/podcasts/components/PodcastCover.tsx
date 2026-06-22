@@ -19,7 +19,7 @@ interface PodcastCoverProps {
 
 export const PodcastCover = ({ podcast }: PodcastCoverProps) => {
   const gradient = gradientForId(podcast.id);
-  const initial = podcast.categoryName.charAt(0).toUpperCase() || '?';
+  const initial = (podcast.categoryName || podcast.title).charAt(0).toUpperCase() || '?';
 
   if (podcast.coverUrl) {
     return (

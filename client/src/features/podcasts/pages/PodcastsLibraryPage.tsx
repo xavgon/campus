@@ -1,4 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 import { PodcastCard } from '@/features/podcasts/components/PodcastCard';
 import { PodcastListSkeleton } from '@/features/podcasts/components/PodcastListSkeleton';
 import { PodcastsEmptyState } from '@/features/podcasts/components/PodcastsEmptyState';
@@ -7,12 +9,22 @@ import { PodcastsToolbar } from '@/features/podcasts/components/PodcastsToolbar'
 import { usePodcastsLibrary } from '@/features/podcasts/hooks/usePodcastsLibrary';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
+import { Alert } from '@/shared/components/campus/Alert';
 import { Button } from '@/shared/components/ui/Button';
 
 export const PodcastsLibraryPage = () => {
+  const location = useLocation();
+  const { user } = useAuth();
+  const canPublish = canPublishPodcasts(user);
+  const publishNotice = (location.state as { notice?: string } | null)?.notice;
+
   const {
     filtered,
+    podcasts,
     isLoading,
+    isFetching,
+    isSearching,
+    error,
     filters,
     stats,
     setSearch,
@@ -32,15 +44,18 @@ export const PodcastsLibraryPage = () => {
           title="Os meus podcasts"
           description="Gere episódios, capas e metadados. Pesquisa, filtra por categoria e acompanha o estado de cada publicação."
         />
-        <Link to="/podcasts/new" className="shrink-0">
-          <Button className="w-full sm:w-auto">Publicar episódio</Button>
-        </Link>
+        {canPublish && (
+          <Link to="/podcasts/new" className="shrink-0">
+            <Button className="w-full sm:w-auto">Publicar episódio</Button>
+          </Link>
+        )}
       </div>
 
-      <ProfileNotice
-        title="Dados de demonstração"
-        message="A listagem mostra episódios de exemplo até o Módulo 2 ligar GET /api/podcasts. O layout e os filtros já estão prontos para a API."
-      />
+      {publishNotice && (
+        <ProfileNotice title="Publicado" message={publishNotice} variant="success" />
+      )}
+
+      {error && <Alert title="Não foi possível carregar" message={error} />}
 
       {!isEmptyLibrary && <PodcastsStats {...stats} />}
 
@@ -49,6 +64,7 @@ export const PodcastsLibraryPage = () => {
           filters={filters}
           resultCount={filtered.length}
           hasActiveFilters={hasActiveFilters}
+          isSearching={isSearching || (isFetching && podcasts.length > 0)}
           onSearchChange={setSearch}
           onCategoryChange={setCategoryId}
           onSortChange={setSort}
@@ -58,7 +74,9 @@ export const PodcastsLibraryPage = () => {
 
       {isLoading && <PodcastListSkeleton />}
 
-      {!isLoading && isEmptyLibrary && <PodcastsEmptyState variant="library" />}
+      {!isLoading && isEmptyLibrary && (
+        <PodcastsEmptyState variant="library" canPublish={canPublish} />
+      )}
 
       {!isLoading && isEmptyResults && (
         <PodcastsEmptyState variant="filters" onClearFilters={clearFilters} />

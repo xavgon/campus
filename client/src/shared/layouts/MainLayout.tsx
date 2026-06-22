@@ -15,7 +15,7 @@ export const MainLayout = () => {
 
   if (IS_ELECTRON) {
     return (
-      <div className="flex h-screen overflow-hidden bg-campus-surface-dark">
+      <div className="flex h-full overflow-hidden bg-campus-surface-dark">
         {!isLoading && isAuthenticated && user ? (
           <DesktopSidebar user={user} onLogout={logout} />
         ) : null}

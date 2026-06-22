@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { User } from '@/features/auth/types/auth.types';
+import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
 import { formatMemberSince } from '@/features/profile/utils/formatMemberSince';
 import { BRAND } from '@/shared/styles/brand';
@@ -12,6 +13,7 @@ interface DashboardWelcomeProps {
 export const DashboardWelcome = ({ user }: DashboardWelcomeProps) => {
   const memberSince = formatMemberSince(user.created_at);
   const firstName = user.nome.trim().split(/\s+/)[0] ?? user.nome;
+  const canPublish = canPublishPodcasts(user);
 
   return (
     <div className="campus-panel flex flex-col gap-6 p-6 sm:p-8 lg:flex-row lg:items-center lg:justify-between">
@@ -30,9 +32,11 @@ export const DashboardWelcome = ({ user }: DashboardWelcomeProps) => {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:justify-end">
-        <Link to="/podcasts/new" className="w-full sm:w-auto">
-          <Button className="w-full">Publicar episódio</Button>
-        </Link>
+        {canPublish && (
+          <Link to="/podcasts/new" className="w-full sm:w-auto">
+            <Button className="w-full">Publicar episódio</Button>
+          </Link>
+        )}
         <Link to="/podcasts" className="w-full sm:w-auto">
           <Button variant="outline" className="w-full">
             Ver biblioteca

@@ -8,6 +8,7 @@ export interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => void;
+  updateUser: (updated: Partial<User>) => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

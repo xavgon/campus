@@ -1,6 +1,6 @@
 import type { Podcast } from '@/features/podcasts/types/podcast';
 
-/** Episódios de exemplo até existir GET /api/podcasts (Módulo 2) */
+/** Episódios de exemplo (fallback local — a app usa GET /api/podcasts). */
 export const DEMO_PODCASTS: Podcast[] = [
   {
     id: 'demo-1',
@@ -8,6 +8,7 @@ export const DEMO_PODCASTS: Podcast[] = [
     description: 'Conceitos base para alunos do ensino secundário.',
     categoryId: '2',
     categoryName: 'Ciências',
+    authorName: 'CAMPUS Demo',
     durationSeconds: 1240,
     status: 'published',
     createdAt: '2026-05-28T10:00:00.000Z',
@@ -19,6 +20,7 @@ export const DEMO_PODCASTS: Podcast[] = [
     description: 'Regras práticas e exercícios rápidos.',
     categoryId: '4',
     categoryName: 'Línguas',
+    authorName: 'CAMPUS Demo',
     durationSeconds: 900,
     status: 'published',
     createdAt: '2026-05-20T14:30:00.000Z',
@@ -30,6 +32,7 @@ export const DEMO_PODCASTS: Podcast[] = [
     description: 'Cronologia e figuras-chave do período.',
     categoryId: '3',
     categoryName: 'História',
+    authorName: 'CAMPUS Demo',
     durationSeconds: 2100,
     status: 'processing',
     createdAt: '2026-06-01T09:15:00.000Z',
@@ -40,6 +43,7 @@ export const DEMO_PODCASTS: Podcast[] = [
     description: 'Primeiro episódio da série de tecnologia.',
     categoryId: '5',
     categoryName: 'Tecnologia',
+    authorName: 'CAMPUS Demo',
     durationSeconds: 0,
     status: 'draft',
     createdAt: '2026-06-03T18:00:00.000Z',

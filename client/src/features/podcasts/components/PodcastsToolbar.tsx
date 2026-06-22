@@ -17,6 +17,7 @@ interface PodcastsToolbarProps {
   filters: PodcastLibraryFilters;
   resultCount: number;
   hasActiveFilters: boolean;
+  isSearching?: boolean;
   onSearchChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onSortChange: (value: PodcastSort) => void;
@@ -27,6 +28,7 @@ export const PodcastsToolbar = ({
   filters,
   resultCount,
   hasActiveFilters,
+  isSearching = false,
   onSearchChange,
   onCategoryChange,
   onSortChange,
@@ -39,7 +41,7 @@ export const PodcastsToolbar = ({
           label="Pesquisar"
           name="podcastSearch"
           type="search"
-          placeholder="Título, descrição ou categoria…"
+          placeholder="Título, descrição ou autor…"
           value={filters.search}
           onChange={(e) => onSearchChange(e.target.value)}
           autoComplete="off"
@@ -91,6 +93,7 @@ export const PodcastsToolbar = ({
         <span className="font-semibold text-campus-foreground">{resultCount}</span>
         {resultCount === 1 ? ' episódio' : ' episódios'}
         {hasActiveFilters ? ' com os filtros actuais' : ''}
+        {isSearching ? ' · a pesquisar…' : ''}
       </p>
       {hasActiveFilters && (
         <Button type="button" variant="ghost" className="!py-2 text-xs" onClick={onClearFilters}>

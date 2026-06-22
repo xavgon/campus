@@ -133,6 +133,7 @@ export const AdminUsersPage = () => {
                 onChange={(e) => void onRoleChange(row, e.target.value as UserRole)}
               >
                 <option value="user">Utilizador</option>
+                <option value="creator">Criador</option>
                 <option value="admin">Administrador</option>
               </select>
             ),
@@ -199,6 +200,7 @@ export const AdminUsersPage = () => {
               onChange={(e) => setEditRole(e.target.value as UserRole)}
             >
               <option value="user">Utilizador</option>
+              <option value="creator">Criador</option>
               <option value="admin">Administrador</option>
             </select>
           </div>

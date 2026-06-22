@@ -1,20 +1,9 @@
-import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { AuthContext } from '@/features/auth/context/auth-context';
 import * as authApi from '@/features/auth/services/auth.service';
 import { sendPresenceLeave } from '@/features/presence/services/presence.service';
 import type { LoginCredentials, RegisterCredentials, User } from '@/features/auth/types/auth.types';
 import { clearToken, getToken, setToken } from '@/shared/utils/storage';
-
-interface AuthContextValue {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<void>;
-  logout: () => void;
-  updateUser: (updated: Partial<User>) => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);

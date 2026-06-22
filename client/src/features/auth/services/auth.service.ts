@@ -27,11 +27,29 @@ export const requestPasswordReset = async (email: string) => {
   return data;
 };
 
+export const resetPassword = async (token: string, newPassword: string) => {
+  const { data } = await api.post<ApiResponse<null>>('/auth/reset-password', { token, newPassword });
+  return data;
+};
+
 export const uploadAvatar = async (file: File) => {
   const formData = new FormData();
   formData.append('photo', file);
   const { data } = await api.put<ApiResponse<{ user: User }>>('/auth/profile/photo', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+};
+
+export const updateProfile = async (nome: string) => {
+  const { data } = await api.put<ApiResponse<{ user: User }>>('/auth/profile', { nome });
+  return data;
+};
+
+export const updatePassword = async (currentPassword: string, newPassword: string) => {
+  const { data } = await api.put<ApiResponse<null>>('/auth/password', {
+    currentPassword,
+    newPassword,
   });
   return data;
 };

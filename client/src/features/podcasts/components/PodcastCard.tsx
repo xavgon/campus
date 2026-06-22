@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { Podcast } from '@/features/podcasts/types/podcast';
 import { PodcastCover } from '@/features/podcasts/components/PodcastCover';
 import { PodcastStatusBadge } from '@/features/podcasts/components/PodcastStatusBadge';
@@ -9,7 +10,10 @@ interface PodcastCardProps {
 }
 
 export const PodcastCard = ({ podcast }: PodcastCardProps) => (
-  <article className="campus-panel group flex flex-col overflow-hidden transition hover:border-campus-primary/35">
+  <Link
+    to={`/podcasts/${podcast.id}`}
+    className="campus-panel group flex flex-col overflow-hidden transition hover:border-campus-primary/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-campus-primary"
+  >
     <div className="relative aspect-[16/10] overflow-hidden border-b border-campus-border/60 bg-black/40">
       <PodcastCover podcast={podcast} />
       <div className="absolute right-2 top-2">
@@ -26,6 +30,7 @@ export const PodcastCard = ({ podcast }: PodcastCardProps) => (
       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-campus-primary">
         {podcast.categoryName}
       </p>
+      <p className="mt-1 text-xs text-campus-muted">{podcast.authorName}</p>
       <h2 className="mt-1.5 line-clamp-2 text-base font-bold leading-snug text-campus-foreground group-hover:text-campus-primary">
         {podcast.title}
       </h2>
@@ -40,5 +45,5 @@ export const PodcastCard = ({ podcast }: PodcastCardProps) => (
         )}
       </footer>
     </div>
-  </article>
+  </Link>
 );

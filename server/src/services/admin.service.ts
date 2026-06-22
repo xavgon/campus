@@ -49,11 +49,11 @@ export const updateUser = async (
     throw new AppError('Utilizador não encontrado', 404);
   }
 
-  if (target.email === DEFAULT_ADMIN_EMAIL.toLowerCase() && data.role === 'user') {
+  if (target.email === DEFAULT_ADMIN_EMAIL.toLowerCase() && data.role !== undefined && data.role !== 'admin') {
     throw new AppError('Não é possível remover o papel de administrador da conta principal', 400);
   }
 
-  if (targetId === actorId && data.role === 'user') {
+  if (targetId === actorId && data.role !== undefined && data.role !== 'admin') {
     throw new AppError('Não podes remover o teu próprio acesso de administrador', 400);
   }
 

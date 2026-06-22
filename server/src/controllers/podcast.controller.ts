@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import fs from 'fs';
 import { AppError } from '../middleware/errorHandler';
 import * as podcastService from '../services/podcast.service';
 import { sendSuccess } from '../utils/apiResponse';
@@ -23,6 +24,24 @@ export const getAll = async (req: Request, res: Response): Promise<void> => {
 export const getOne = async (req: Request, res: Response): Promise<void> => {
   const podcast = await podcastService.getPodcastById(req.params.id as string);
   sendSuccess(res, { podcast });
+};
+
+// ─── GET /api/podcasts/:id/download ───────────────────────────────────────────
+
+export const download = async (req: Request, res: Response): Promise<void> => {
+  const { filePath, downloadName, contentType } = await podcastService.getPodcastDownload(
+    req.params.id as string,
+  );
+
+  const stat = fs.statSync(filePath);
+
+  res.status(200).set({
+    'Content-Type': contentType,
+    'Content-Disposition': `attachment; filename="${downloadName}"`,
+    'Content-Length': String(stat.size),
+  });
+
+  fs.createReadStream(filePath).pipe(res);
 };
 
 // ─── POST /api/podcasts ───────────────────────────────────────────────────────

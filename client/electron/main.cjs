@@ -1,9 +1,10 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
-const { buildApplicationMenu } = require('./menu.cjs');
+const { configureWindowMenu } = require('./menu.cjs');
 
 const isDev = !app.isPackaged;
 const DEV_URL = 'http://localhost:5173';
+const preloadPath = path.join(__dirname, 'preload.cjs');
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
@@ -11,6 +12,22 @@ let mainWindow = null;
 if (process.platform === 'win32') {
   app.setAppUserModelId('co.ao.campus.app');
 }
+
+const notifyMaximizedState = () => {
+  if (!mainWindow) return;
+  mainWindow.webContents.send('window:maximized-changed', mainWindow.isMaximized());
+};
+
+const registerWindowControls = () => {
+  ipcMain.on('window:minimize', () => mainWindow?.minimize());
+  ipcMain.on('window:maximize', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMaximized()) mainWindow.unmaximize();
+    else mainWindow.maximize();
+  });
+  ipcMain.on('window:close', () => mainWindow?.close());
+  ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+};
 
 const attachDesktopGuards = (win) => {
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -35,9 +52,11 @@ const createWindow = () => {
     minHeight: 640,
     title: 'CAMPUS',
     show: false,
+    frame: false,
     backgroundColor: '#080808',
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
     webPreferences: {
+      preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -45,8 +64,11 @@ const createWindow = () => {
     },
   });
 
-  buildApplicationMenu(mainWindow, { isDev });
+  configureWindowMenu(mainWindow, { isDev });
   attachDesktopGuards(mainWindow);
+
+  mainWindow.on('maximize', notifyMaximizedState);
+  mainWindow.on('unmaximize', notifyMaximizedState);
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
@@ -54,7 +76,7 @@ const createWindow = () => {
   });
 
   if (isDev) {
-    mainWindow.loadURL(DEV_URL);
+    mainWindow.loadURL(`${DEV_URL}/login`);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
@@ -63,6 +85,8 @@ const createWindow = () => {
     mainWindow = null;
   });
 };
+
+registerWindowControls();
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DEMO_PODCASTS } from '@/features/podcasts/data/demoPodcasts';
+import { fetchPodcasts } from '@/features/podcasts/services/podcast.service';
 import type { Podcast } from '@/features/podcasts/types/podcast';
 import { computePodcastStats } from '@/features/podcasts/utils/computePodcastStats';
 
@@ -14,10 +14,16 @@ export const useDashboardSummary = () => {
     setIsLoading(true);
 
     const load = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      if (cancelled) return;
-      setPodcasts(DEMO_PODCASTS);
-      setIsLoading(false);
+      try {
+        const items = await fetchPodcasts();
+        if (cancelled) return;
+        setPodcasts(items);
+      } catch {
+        if (cancelled) return;
+        setPodcasts([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
 
     void load();

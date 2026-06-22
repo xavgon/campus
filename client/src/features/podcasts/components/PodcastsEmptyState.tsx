@@ -3,10 +3,15 @@ import { Button } from '@/shared/components/ui/Button';
 
 interface PodcastsEmptyStateProps {
   variant: 'library' | 'filters';
+  canPublish?: boolean;
   onClearFilters?: () => void;
 }
 
-export const PodcastsEmptyState = ({ variant, onClearFilters }: PodcastsEmptyStateProps) => (
+export const PodcastsEmptyState = ({
+  variant,
+  canPublish = false,
+  onClearFilters,
+}: PodcastsEmptyStateProps) => (
   <div className="campus-panel flex flex-col items-center px-6 py-12 text-center sm:py-16">
     <div
       className="mb-6 flex h-16 w-16 items-center justify-center rounded-none border border-campus-border/80 bg-black/30"
@@ -30,12 +35,15 @@ export const PodcastsEmptyState = ({ variant, onClearFilters }: PodcastsEmptySta
       <>
         <h2 className="text-xl font-bold text-campus-foreground">Ainda não tens episódios</h2>
         <p className="mt-2 max-w-md text-sm leading-relaxed text-campus-accent">
-          Publica o teu primeiro podcast com áudio e metadados. Quando a API estiver ligada, os
-          episódios aparecem aqui automaticamente.
+          {canPublish
+            ? 'Publica o teu primeiro podcast com áudio e metadados. Os episódios aparecem aqui automaticamente.'
+            : 'Ainda não há episódios na tua biblioteca. Contacta um administrador se precisares de permissão para publicar.'}
         </p>
-        <Link to="/podcasts/new" className="mt-6">
-          <Button>Publicar primeiro episódio</Button>
-        </Link>
+        {canPublish && (
+          <Link to="/podcasts/new" className="mt-6">
+            <Button>Publicar primeiro episódio</Button>
+          </Link>
+        )}
       </>
     ) : (
       <>

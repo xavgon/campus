@@ -1,15 +1,34 @@
 const { app, BrowserWindow, Menu, dialog } = require('electron');
 
 /**
- * Menu nativo estilo aplicação Windows (Ficheiro, Editar, Ver, Janela, Ajuda).
+ * Produção: sem barra Ficheiro/Editar/Ver — aspecto de app nativo.
+ * Desenvolvimento: menu mínimo, oculto por defeito (Alt para revelar).
  * @param {BrowserWindow} mainWindow
  * @param {{ isDev: boolean }} options
  */
-const buildApplicationMenu = (mainWindow, { isDev }) => {
+const configureWindowMenu = (mainWindow, { isDev }) => {
+  if (!isDev) {
+    Menu.setApplicationMenu(null);
+    mainWindow.setMenuBarVisibility(false);
+    mainWindow.setAutoHideMenuBar(true);
+    return;
+  }
+
   const template = [
     {
-      label: 'Ficheiro',
+      label: 'CAMPUS',
       submenu: [
+        {
+          label: 'Recarregar',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => mainWindow?.webContents.reload(),
+        },
+        {
+          label: 'Ferramentas de programador',
+          accelerator: 'CmdOrCtrl+Shift+I',
+          click: () => mainWindow?.webContents.toggleDevTools(),
+        },
+        { type: 'separator' },
         {
           label: 'Sair',
           accelerator: 'Alt+F4',
@@ -32,12 +51,6 @@ const buildApplicationMenu = (mainWindow, { isDev }) => {
     {
       label: 'Ver',
       submenu: [
-        {
-          label: 'Recarregar',
-          accelerator: 'CmdOrCtrl+R',
-          click: () => mainWindow?.webContents.reload(),
-        },
-        { type: 'separator' },
         { role: 'resetZoom', label: 'Zoom normal' },
         { role: 'zoomIn', label: 'Aumentar zoom' },
         { role: 'zoomOut', label: 'Diminuir zoom' },
@@ -47,23 +60,6 @@ const buildApplicationMenu = (mainWindow, { isDev }) => {
           accelerator: 'F11',
           click: () => mainWindow?.setFullScreen(!mainWindow.isFullScreen()),
         },
-        ...(isDev
-          ? [
-              { type: 'separator' },
-              {
-                label: 'Ferramentas de programador',
-                accelerator: 'CmdOrCtrl+Shift+I',
-                click: () => mainWindow?.webContents.toggleDevTools(),
-              },
-            ]
-          : []),
-      ],
-    },
-    {
-      label: 'Janela',
-      submenu: [
-        { role: 'minimize', label: 'Minimizar' },
-        { role: 'close', label: 'Fechar' },
       ],
     },
     {
@@ -85,8 +81,9 @@ const buildApplicationMenu = (mainWindow, { isDev }) => {
     },
   ];
 
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  mainWindow.setAutoHideMenuBar(true);
+  mainWindow.setMenuBarVisibility(false);
 };
 
-module.exports = { buildApplicationMenu };
+module.exports = { configureWindowMenu };

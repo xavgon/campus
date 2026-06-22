@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import path from 'path';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';

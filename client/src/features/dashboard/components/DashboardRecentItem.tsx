@@ -19,10 +19,10 @@ export const DashboardRecentItem = ({ podcast }: DashboardRecentItemProps) => (
     <div className="flex shrink-0 items-center gap-3">
       <PodcastStatusBadge status={podcast.status} />
       <Link
-        to="/podcasts"
+        to={`/podcasts/${podcast.id}`}
         className="text-xs font-bold text-campus-primary hover:underline"
       >
-        Ver
+        Ouvir
       </Link>
     </div>
   </li>

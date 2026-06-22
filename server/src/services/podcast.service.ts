@@ -90,6 +90,53 @@ const runCompression = async (podcastId: string, inputPath: string): Promise<voi
   }
 };
 
+const AUDIO_MIME: Record<string, string> = {
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.flac': 'audio/flac',
+};
+
+const resolveUploadPath = (urlPath: string): string =>
+  path.join(process.cwd(), urlPath.replace(/^\/+/, ''));
+
+const sanitizeDownloadName = (title: string, ext: string): string => {
+  const base =
+    title
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^\w.-]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'podcast';
+  return `${base}${ext}`;
+};
+
+export interface PodcastDownloadInfo {
+  filePath: string;
+  downloadName: string;
+  contentType: string;
+}
+
+export const getPodcastDownload = async (id: string): Promise<PodcastDownloadInfo> => {
+  const podcast = await getPodcastById(id);
+  if (!podcast.audio_url) {
+    throw new AppError('Este podcast ainda não tem ficheiro de áudio', 404);
+  }
+
+  const filePath = resolveUploadPath(podcast.audio_url);
+  if (!fs.existsSync(filePath)) {
+    throw new AppError('Ficheiro de áudio não encontrado no servidor', 404);
+  }
+
+  const ext = path.extname(filePath).toLowerCase() || '.mp3';
+  return {
+    filePath,
+    downloadName: sanitizeDownloadName(podcast.title, ext),
+    contentType: AUDIO_MIME[ext] ?? 'application/octet-stream',
+  };
+};
+
 // ─── Eliminar ─────────────────────────────────────────────────────────────────
 
 export const deletePodcast = async (

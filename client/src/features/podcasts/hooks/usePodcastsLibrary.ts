@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DEMO_PODCASTS } from '@/features/podcasts/data/demoPodcasts';
+import { fetchPodcasts } from '@/features/podcasts/services/podcast.service';
 import type { Podcast, PodcastLibraryFilters, PodcastSort } from '@/features/podcasts/types/podcast';
 import { computePodcastStats } from '@/features/podcasts/utils/computePodcastStats';
 import { filterAndSortPodcasts } from '@/features/podcasts/utils/filterPodcasts';
+import { getApiErrorMessage } from '@/shared/api/client';
+import { useDebounce } from '@/shared/hooks/useDebounce';
 
 const DEFAULT_FILTERS: PodcastLibraryFilters = {
   search: '',
@@ -12,30 +14,49 @@ const DEFAULT_FILTERS: PodcastLibraryFilters = {
 
 export const usePodcastsLibrary = () => {
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<PodcastLibraryFilters>(DEFAULT_FILTERS);
+
+  const debouncedSearch = useDebounce(filters.search, 300);
+  const isSearching = filters.search.trim() !== debouncedSearch.trim();
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
+    setIsFetching(true);
+    setError(null);
 
     const load = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      if (cancelled) return;
-      // Substituir por fetchMyPodcasts() quando a API existir (Módulo 2)
-      setPodcasts(DEMO_PODCASTS);
-      setIsLoading(false);
+      try {
+        const items = await fetchPodcasts({
+          search: debouncedSearch,
+          categoryId: filters.categoryId,
+        });
+        if (cancelled) return;
+        setPodcasts(items);
+      } catch (err) {
+        if (cancelled) return;
+        setPodcasts([]);
+        setError(getApiErrorMessage(err));
+      } finally {
+        if (!cancelled) setIsFetching(false);
+      }
     };
 
     void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [debouncedSearch, filters.categoryId]);
 
   const filtered = useMemo(
-    () => filterAndSortPodcasts(podcasts, filters),
-    [podcasts, filters],
+    () =>
+      filterAndSortPodcasts(podcasts, {
+        search: '',
+        categoryId: '',
+        sort: filters.sort,
+      }),
+    [podcasts, filters.sort],
   );
 
   const stats = useMemo(() => computePodcastStats(podcasts), [podcasts]);
@@ -49,10 +70,15 @@ export const usePodcastsLibrary = () => {
   const hasActiveFilters =
     filters.search.trim() !== '' || filters.categoryId !== '' || filters.sort !== 'newest';
 
+  const isLoading = isFetching && podcasts.length === 0;
+
   return {
     podcasts,
     filtered,
     isLoading,
+    isFetching,
+    isSearching,
+    error,
     filters,
     stats,
     setSearch,
@@ -60,7 +86,7 @@ export const usePodcastsLibrary = () => {
     setSort,
     clearFilters,
     hasActiveFilters,
-    isEmptyLibrary: !isLoading && podcasts.length === 0,
-    isEmptyResults: !isLoading && podcasts.length > 0 && filtered.length === 0,
+    isEmptyLibrary: !isFetching && !error && podcasts.length === 0 && !hasActiveFilters,
+    isEmptyResults: !isFetching && !error && filtered.length === 0 && hasActiveFilters,
   };
 };
