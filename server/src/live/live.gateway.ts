@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { config } from '../config';
+import { LiveRecorder } from './live.recorder';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ interface LiveSession {
   broadcaster: WebSocket;
   listeners: Set<WebSocket>;
   startedAt: Date;
+  recorder: LiveRecorder;
 }
 
 // ─── Estado em memória ────────────────────────────────────────────────────────
@@ -109,10 +111,17 @@ const handleBroadcaster = (ws: WebSocket, payload: JwtPayload) => {
   let session: LiveSession | null = null;
 
   ws.on('message', (raw, isBinary) => {
-    // Mensagens binárias = chunks de áudio/vídeo
+    // Mensagens binárias = chunks de áudio/vídeo (com prefixo de tipo)
     if (isBinary) {
       if (!session) return;
-      broadcast(session, raw as Buffer);
+      const buf = raw as Buffer;
+      broadcast(session, buf);
+
+      // Gravar: separar tipo do payload
+      const type = buf[0];
+      const payload = buf.slice(1);
+      if (type === 0x01) session.recorder.writeVideo(payload);
+      if (type === 0x02) session.recorder.writeAudio(payload);
       return;
     }
 
@@ -124,8 +133,9 @@ const handleBroadcaster = (ws: WebSocket, payload: JwtPayload) => {
         const title = typeof msg.title === 'string' ? msg.title : 'Live sem título';
         const mediaType = (msg.mediaType as MediaType) ?? 'audio';
 
+        const sessionId = randomUUID();
         session = {
-          id: randomUUID(),
+          id: sessionId,
           title,
           mediaType,
           hostId: payload.userId,
@@ -133,6 +143,7 @@ const handleBroadcaster = (ws: WebSocket, payload: JwtPayload) => {
           broadcaster: ws,
           listeners: new Set(),
           startedAt: new Date(),
+          recorder: new LiveRecorder(sessionId, title, mediaType),
         };
         sessions.set(session.id, session);
 
@@ -200,4 +211,5 @@ const endSession = (session: LiveSession) => {
   }
   sessions.delete(session.id);
   console.info(`[LIVE] "${session.title}" terminou.`);
+  void session.recorder.stop();
 };
