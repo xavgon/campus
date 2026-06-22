@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>CAMPUS — Live Streaming Test</title>
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+    button { margin: 5px; padding: 8px 16px; cursor: pointer; background: #222; color: #0f0; border: 1px solid #0f0; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    input { background: #222; color: #fff; border: 1px solid #555; padding: 6px; width: 400px; }
+    #log { margin-top: 20px; background: #000; padding: 10px; height: 300px; overflow-y: auto; border: 1px solid #333; }
+    .section { margin: 20px 0; padding: 15px; border: 1px solid #333; }
+    h2 { color: #ff0; margin-bottom: 10px; }
+    canvas { border: 1px solid #333; margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>🎙️ CAMPUS — Live Streaming Test</h1>
+
+  <div class="section">
+    <h2>1. Autenticação</h2>
+    <input id="email" placeholder="email" /><br><br>
+    <input id="password" placeholder="password" type="password" /><br><br>
+    <button onclick="doLogin()">Login</button>
+    <span id="authStatus"></span>
+  </div>
+
+  <div class="section">
+    <h2>2. Broadcaster — Iniciar Live</h2>
+    <input id="liveTitle" placeholder="Título da live" value="Live de Teste" />
+    <select id="mediaType" style="background:#222;color:#fff;padding:6px;border:1px solid #555;">
+      <option value="audio">Áudio</option>
+      <option value="video">Vídeo</option>
+      <option value="both">Ambos (Vídeo + Áudio)</option>
+    </select><br><br>
+    <button id="btnStart" onclick="startBroadcast()" disabled>Iniciar Live</button>
+    <button id="btnStop" onclick="stopBroadcast()" disabled>Terminar Live</button>
+    <span id="liveIdLabel" style="color:#ff0;margin-left:10px;"></span>
+    <br>
+    <canvas id="preview" width="320" height="240"></canvas>
+  </div>
+
+  <div class="section">
+    <h2>3. Listener — Entrar numa Live</h2>
+    <input id="joinLiveId" placeholder="Live ID (copia do campo acima)" style="width:380px;" /><br><br>
+    <button id="btnJoin" onclick="joinLive()" disabled>Entrar na Live</button>
+    <button id="btnLeave" onclick="leaveLive()" disabled>Sair</button>
+    <button id="btnAudio" onclick="activarAudio()" style="display:none;background:#003300;border-color:#0f0;">🔊 Activar Áudio</button>
+    <span id="listenerStatus" style="margin-left:10px;color:#0ff;"></span>
+    <br>
+    <canvas id="viewer" width="320" height="240"></canvas>
+  </div>
+
+  <div class="section">
+    <h2>4. REST — Lives Activas</h2>
+    <button onclick="fetchLives()">GET /api/live</button>
+    <pre id="livesResult" style="color:#aaa;margin-top:10px;"></pre>
+  </div>
+
+  <div id="log"></div>
+
+<script>
+// ─── Config dinâmica (funciona em localhost e em IP local da rede) ─────────────
+const API = location.origin + '/api';
+const WS  = location.origin.replace(/^http/, 'ws') + '/live';
+
+// ─── Estado ───────────────────────────────────────────────────────────────────
+let token = '';
+let broadcasterWs = null;
+let listenerWs    = null;
+let mediaStream   = null;
+let videoInterval = null;
+let audioProcessor = null;
+let audioCtxBroadcaster = null;
+let audioCtxListener    = null;
+
+// Prefixos binários para diferenciar vídeo e áudio
+const TYPE_VIDEO = 0x01;
+const TYPE_AUDIO = 0x02;
+
+// ─── Log ──────────────────────────────────────────────────────────────────────
+function log(msg, color) {
+  const div = document.getElementById('log');
+  const line = document.createElement('div');
+  line.style.color = color || '#0f0';
+  line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  div.appendChild(line);
+  div.scrollTop = div.scrollHeight;
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email    = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  try {
+    const res  = await fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      token = data.data.token;
+      document.getElementById('authStatus').textContent = ' ✅ ' + data.data.user.email;
+      document.getElementById('authStatus').style.color = '#0f0';
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnJoin').disabled  = false;
+      log('Login OK — token obtido');
+    } else {
+      log('Erro login: ' + data.message, '#f00');
+    }
+  } catch (e) { log('Erro: ' + e, '#f00'); }
+}
+
+// ─── Broadcaster ──────────────────────────────────────────────────────────────
+function startBroadcast() {
+  const title     = document.getElementById('liveTitle').value;
+  const mediaType = document.getElementById('mediaType').value;
+
+  broadcasterWs = new WebSocket(WS + '?token=' + token + '&role=broadcaster');
+
+  broadcasterWs.onopen = () => {
+    log('WebSocket broadcaster conectado');
+    broadcasterWs.send(JSON.stringify({ type: 'start', title, mediaType }));
+  };
+
+  broadcasterWs.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    log('← ' + JSON.stringify(msg), '#ff0');
+    if (msg.type === 'started') {
+      document.getElementById('liveIdLabel').textContent = 'Live ID: ' + msg.liveId;
+      document.getElementById('joinLiveId').value = msg.liveId;
+      document.getElementById('btnStop').disabled  = false;
+      document.getElementById('btnStart').disabled = true;
+      startCapture(mediaType);
+    }
+  };
+
+  broadcasterWs.onerror = (e) => log('Erro WS broadcaster', '#f00');
+  broadcasterWs.onclose = () => log('Broadcaster desconectado', '#888');
+}
+
+async function startCapture(mediaType) {
+  const wantsVideo = mediaType === 'video' || mediaType === 'both';
+  const wantsAudio = mediaType === 'audio' || mediaType === 'both';
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: wantsVideo,
+      audio: wantsAudio,
+    });
+  } catch (e) {
+    log('Erro ao aceder câmera/microfone: ' + e, '#f00');
+    return;
+  }
+
+  // ── Vídeo ──────────────────────────────────────────────────────────────────
+  if (wantsVideo) {
+    const canvas  = document.getElementById('preview');
+    canvas.style.display = 'block';
+    const videoEl = document.createElement('video');
+    videoEl.srcObject = mediaStream;
+    videoEl.muted = true;
+    videoEl.play();
+
+    const ctx = canvas.getContext('2d');
+    videoInterval = setInterval(() => {
+      if (!broadcasterWs || broadcasterWs.readyState !== WebSocket.OPEN) return;
+      ctx.drawImage(videoEl, 0, 0, 320, 240);
+      canvas.toBlob((blob) => {
+        blob.arrayBuffer().then((buf) => {
+          // Prefixo TYPE_VIDEO + frame JPEG
+          const out = new Uint8Array(1 + buf.byteLength);
+          out[0] = TYPE_VIDEO;
+          out.set(new Uint8Array(buf), 1);
+          broadcasterWs.send(out);
+        });
+      }, 'image/jpeg', 0.7);
+    }, 1000 / 15); // 15 FPS
+    log('Captura de vídeo iniciada (15 FPS, JPEG)');
+  }
+
+  // ── Áudio ──────────────────────────────────────────────────────────────────
+  if (wantsAudio) {
+    audioCtxBroadcaster = new AudioContext({ sampleRate: 44100 });
+    const source = audioCtxBroadcaster.createMediaStreamSource(mediaStream);
+    audioProcessor = audioCtxBroadcaster.createScriptProcessor(4096, 1, 1);
+    // GainNode com volume 0 ligado ao destination — necessário para onaudioprocess disparar
+    const silentGain = audioCtxBroadcaster.createGain();
+    silentGain.gain.value = 0;
+    source.connect(audioProcessor);
+    audioProcessor.connect(silentGain);
+    silentGain.connect(audioCtxBroadcaster.destination);
+    audioProcessor.onaudioprocess = (e) => {
+      if (!broadcasterWs || broadcasterWs.readyState !== WebSocket.OPEN) return;
+      const pcm   = e.inputBuffer.getChannelData(0);
+      const int16 = new Int16Array(pcm.length);
+      for (let i = 0; i < pcm.length; i++) {
+        int16[i] = Math.max(-32768, Math.min(32767, pcm[i] * 32767));
+      }
+      // Prefixo TYPE_AUDIO + PCM Int16
+      const out = new Uint8Array(1 + int16.byteLength);
+      out[0] = TYPE_AUDIO;
+      out.set(new Uint8Array(int16.buffer), 1);
+      broadcasterWs.send(out);
+    };
+    log('Captura de áudio iniciada (PCM 44100 Hz mono)');
+  }
+}
+
+function stopBroadcast() {
+  if (videoInterval)       clearInterval(videoInterval);
+  if (audioProcessor)      audioProcessor.disconnect();
+  if (audioCtxBroadcaster) audioCtxBroadcaster.close();
+  if (mediaStream)         mediaStream.getTracks().forEach((t) => t.stop());
+  if (broadcasterWs) {
+    broadcasterWs.send(JSON.stringify({ type: 'stop' }));
+    broadcasterWs.close();
+  }
+  videoInterval = audioProcessor = audioCtxBroadcaster = mediaStream = broadcasterWs = null;
+  document.getElementById('preview').style.display = 'none';
+  document.getElementById('btnStop').disabled  = true;
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('liveIdLabel').textContent = '';
+  log('Live terminada');
+}
+
+// ─── Listener ─────────────────────────────────────────────────────────────────
+function joinLive() {
+  const liveId = document.getElementById('joinLiveId').value.trim();
+  if (!liveId) { log('Introduz o Live ID', '#f00'); return; }
+
+  listenerWs = new WebSocket(WS + '?token=' + token + '&role=listener&liveId=' + liveId);
+  listenerWs.binaryType = 'arraybuffer';
+
+  listenerWs.onopen = () => log('Listener conectado, aguarda stream...');
+
+  listenerWs.onmessage = (e) => {
+    // ── Mensagem de controlo (JSON) ───────────────────────────────────────
+    if (typeof e.data === 'string') {
+      const msg = JSON.parse(e.data);
+      log('← ' + JSON.stringify(msg), '#0ff');
+
+      if (msg.type === 'joined') {
+        document.getElementById('btnLeave').disabled = false;
+        document.getElementById('btnJoin').disabled  = true;
+        document.getElementById('listenerStatus').textContent =
+          '▶ A ver: ' + msg.title + ' (' + msg.mediaType + ')';
+
+        const hasVideo = msg.mediaType === 'video' || msg.mediaType === 'both';
+        const hasAudio = msg.mediaType === 'audio' || msg.mediaType === 'both';
+
+        if (hasVideo) document.getElementById('viewer').style.display = 'block';
+        if (hasAudio) initListenerAudio();
+      }
+
+      if (msg.type === 'ended') {
+        log('A transmissão terminou.', '#888');
+        leaveLive();
+      }
+      return;
+    }
+
+    // ── Dados binários (vídeo ou áudio) ───────────────────────────────────
+    const view    = new Uint8Array(e.data);
+    const type    = view[0];
+    const payload = e.data.slice(1); // remove prefixo
+
+    if (type === TYPE_VIDEO) {
+      renderVideoFrame(payload);
+    } else if (type === TYPE_AUDIO) {
+      playAudioChunk(payload);
+    }
+  };
+
+  listenerWs.onerror = () => log('Erro WS listener', '#f00');
+  listenerWs.onclose = () => log('Listener desconectado', '#888');
+}
+
+function leaveLive() {
+  if (listenerWs) listenerWs.close();
+  if (audioCtxListener) { audioCtxListener.close(); audioCtxListener = null; }
+  listenerWs = null;
+  document.getElementById('btnLeave').disabled = true;
+  document.getElementById('btnJoin').disabled  = false;
+  document.getElementById('viewer').style.display = 'none';
+  document.getElementById('listenerStatus').textContent = '';
+  document.getElementById('btnAudio').style.display = 'none';
+}
+
+// ─── Vídeo — renderizar frame JPEG no canvas ──────────────────────────────────
+function renderVideoFrame(buffer) {
+  const blob = new Blob([buffer], { type: 'image/jpeg' });
+  const url  = URL.createObjectURL(blob);
+  const canvas = document.getElementById('viewer');
+  const ctx  = canvas.getContext('2d');
+  const img  = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+
+// ─── Áudio — reproduzir chunk PCM Int16 ──────────────────────────────────────
+function initListenerAudio() {
+  audioCtxListener = new AudioContext({ sampleRate: 44100 });
+  // Mostrar sempre o botão — browsers modernos suspendem AudioContext sem gesto do utilizador
+  document.getElementById('btnAudio').style.display = 'inline-block';
+  log('⚠️ Clica em "🔊 Activar Áudio" para ouvir a live', '#ff0');
+}
+
+function activarAudio() {
+  if (!audioCtxListener) return;
+  audioCtxListener.resume().then(() => {
+    document.getElementById('btnAudio').style.display = 'none';
+    log('🔊 Áudio activado — já podes ouvir a live', '#0f0');
+  });
+}
+
+function playAudioChunk(buffer) {
+  if (!audioCtxListener) return;
+  const int16  = new Int16Array(buffer);
+  const float32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) {
+    float32[i] = int16[i] / 32767;
+  }
+  const audioBuf = audioCtxListener.createBuffer(1, float32.length, 44100);
+  audioBuf.getChannelData(0).set(float32);
+  const source = audioCtxListener.createBufferSource();
+  source.buffer = audioBuf;
+  source.connect(audioCtxListener.destination);
+  source.start();
+}
+
+// ─── REST — lives activas ──────────────────────────────────────────────────────
+async function fetchLives() {
+  if (!token) { log('Faz login primeiro', '#f00'); return; }
+  const res  = await fetch(API + '/live', {
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  const data = await res.json();
+  document.getElementById('livesResult').textContent = JSON.stringify(data, null, 2);
+}
+</script>
+</body>
+</html>
