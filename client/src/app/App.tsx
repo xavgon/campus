@@ -21,6 +21,9 @@ import {
   AdminUsersPage,
 } from '@/pages/admin/AdminPages';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
+import { LiveBroadcastPage } from '@/features/live/pages/LiveBroadcastPage';
+import { LiveHubPage } from '@/features/live/pages/LiveHubPage';
+import { LiveWatchPage } from '@/features/live/pages/LiveWatchPage';
 import { MainLayout } from '@/shared/layouts/MainLayout';
 import { MarketingLayout } from '@/shared/layouts/MarketingLayout';
 import { ElectronShell } from '@/shared/layouts/ElectronShell';
@@ -45,6 +48,11 @@ const AppRoutes = () => (
           <Route path="/podcasts/new" element={<PodcastNewPage />} />
         </Route>
         <Route path="/podcasts/:id" element={<PodcastDetailPage />} />
+        <Route path="/live" element={<LiveHubPage />} />
+        <Route element={<CreatorRoute />}>
+          <Route path="/live/broadcast" element={<LiveBroadcastPage />} />
+        </Route>
+        <Route path="/live/:id" element={<LiveWatchPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route element={<AdminRoute />}>
           <Route element={<AdminLayout />}>

@@ -15,45 +15,54 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 | Área | Entregáveis |
 |------|-------------|
 | **Arquitetura** | `app/`, `features/`, `pages/`, `shared/` |
-| **Marketing** | Home, login, registo, `MarketingLayout`, fundos, malha triangular |
-| **Design system** | `AuthPanel`, `Field`, `TextAreaField`, `Alert`, `Modal`, `RouteTransition`, `campus-panel` |
-| **Auth (Módulo 1)** | `AuthContext`, `ProtectedRoute`, validação, skeleton, «Lembrar email» |
-| **Recuperação password** | `ForgotPasswordModal` (reset por email pendente no backend) |
-| **Nav autenticada** | `CampusNav`, indicador deslizante, `NavBrand`, `NavUserMenu` (avatar + Sair) |
-| **Dashboard** | Boas-vindas, stats, episódios recentes, ligados agora, atalho admin |
-| **Podcasts** | Biblioteca com grelha, pesquisa, filtros, ordenação, estados vazio/loading |
-| **Publicar** | Formulário completo, dropzones, categoria «Outros», validação local |
+| **Marketing** | Home, login, registo, reset password, `MarketingLayout`, fundos, malha triangular |
+| **Design system** | `AuthPanel`, `Field`, `TextAreaField`, `Alert`, `Modal`, `RouteTransition`, `campus-panel`, `DesktopTitleBar` |
+| **Auth (Módulo 1)** | `AuthContext`, `ProtectedRoute`, `CreatorRoute`, validação, skeleton, «Lembrar email» |
+| **Recuperação password** | `ForgotPasswordModal` + página `/reset-password` |
+| **Papel criador (RF12)** | Nav condicional, publicar e broadcast só para `creator`/`admin` |
+| **Nav autenticada** | `CampusNav`, indicador deslizante, `NavBrand`, `NavUserMenu`, item «Ao vivo» |
+| **Dashboard** | Boas-vindas, stats, episódios recentes, ligados agora, atalhos admin e live |
+| **Podcasts** | Biblioteca API, pesquisa debounced (RF09), filtros, detalhe, player, download |
+| **Publicar** | Upload multipart real, dropzones, categoria «Outros», validação |
 | **Perfil** | Layout, avatar, forms nome/password (gravação API Módulo 6 pendente) |
 | **Presença** | `usePresenceSession` + painel de utilizadores ligados |
-| **Admin** | `/admin` — utilizadores, publicações, transmissões, registo; CRUD com formulários e modais |
+| **Live (Passo 1)** | Hub, broadcast (MediaDevices + WS), watch (listener WS) |
+| **Admin** | `/admin` — utilizadores (com papel criador), publicações, transmissões, registo |
+| **Electron** | Frameless, barra de título, redirect `/`, menu oculto em prod |
 | **Dev UX** | Credenciais admin pré-preenchidas em `import.meta.env.DEV` |
 
 ### Rotas existentes
 
-| Rota | Página | Layout |
-|------|--------|--------|
-| `/` | Home | Marketing |
+| Rota | Página | Layout / guarda |
+|------|--------|-------------------|
+| `/` | Home / redirect Electron | Marketing |
 | `/explorar` | Explorar | Marketing |
 | `/login` | Login | Marketing |
 | `/register` | Registo | Marketing |
+| `/reset-password` | Nova password | Marketing |
 | `/dashboard` | Dashboard | Main + protegida |
 | `/podcasts` | Biblioteca | Main + protegida |
-| `/podcasts/new` | Publicar | Main + protegida |
+| `/podcasts/:id` | Detalhe | Main + protegida |
+| `/podcasts/new` | Publicar | Main + criador |
+| `/live` | Hub ao vivo | Main + protegida |
+| `/live/broadcast` | Transmitir | Main + criador |
+| `/live/:id` | Assistir | Main + protegida |
 | `/profile` | Perfil | Main + protegida |
 | `/admin` | Painel admin | Main + admin |
 | `/admin/users` | Utilizadores | Main + admin |
 | `/admin/posts` | Publicações | Main + admin |
-| `/admin/transmissions` | Transmissões | Main + admin |
+| `/admin/transmissions` | Transmissões (BD) | Main + admin |
 | `/admin/logs` | Registo | Main + admin |
 
 ### Lacunas conhecidas (curto prazo)
 
-- [ ] Página **nova password** (`/reset-password?token=…`)
-- [ ] **Upload real** de áudio/capa (`POST` multipart + progresso)
-- [ ] Substituir **dados demo** da biblioteca por `GET /api/podcasts`
-- [ ] **Gravar perfil** quando API Módulo 6 existir
+- [ ] **SMTP real** para email de reset (hoje: link no log do servidor em dev)
+- [ ] **Gravar perfil** quando API Módulo 6 existir (`PUT` perfil/password)
+- [ ] **Unificar** admin `streams` (BD) com sessões live WebSocket
+- [ ] Mensagens de erro live mais claras («transmissão já não está activa»)
 - [ ] Tratamento global de erros API (401 → logout, toast reutilizável)
 - [ ] Testes (Vitest + Testing Library)
+- [ ] Ícone `.ico` e smoke test do build Electron
 
 ---
 
@@ -77,41 +86,42 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ---
 
-## Fase 1 — Autenticação (~90% frontend)
+## Fase 1 — Autenticação ✅ (frontend)
 
 ### Feito
 
 - [x] Login e registo com validação
 - [x] Persistência de sessão (token + perfil com `role`)
-- [x] Rotas protegidas + `AdminRoute`
+- [x] Rotas protegidas + `AdminRoute` + `CreatorRoute`
 - [x] Modal esqueci password
+- [x] Página reset password (`/reset-password?token=`)
 - [x] Nav com avatar e menu utilizador
 
 ### Por concluir
 
-- [ ] Reset password: rota + formulário + estados
 - [ ] Refresh de perfil após editar (Módulo 6)
 - [ ] Mensagens HTTP → copy PT centralizadas
+- [ ] Envio real de email (SMTP)
 
 ---
 
-## Fase 2 — Gestão de podcasts (~60% frontend)
+## Fase 2 — Gestão de podcasts (~85% frontend)
 
 ### Feito
 
-- [x] Rotas `/podcasts`, `/podcasts/new`
-- [x] Tipos, constantes, validação de publicação
-- [x] Listagem: cards, filtros, pesquisa, ordenação, skeleton
+- [x] Rotas `/podcasts`, `/podcasts/new`, `/podcasts/:id`
+- [x] `podcast.service.ts` — `GET`, `POST` multipart, download
+- [x] Listagem API: cards, filtros, pesquisa debounced, ordenação, skeleton
 - [x] Formulário: áudio, capa, metadados, «Outros»
-- [x] Estados vazios e mensagens de demo/API
+- [x] Detalhe com player e download
+- [x] Restrição de publicação a criadores (RF12)
 
 ### Por concluir
 
-- [ ] `podcast.service.ts` — `GET/POST` multipart real
-- [ ] `/podcasts/:id` — detalhe, editar, eliminar (utilizador)
-- [ ] Progress bar de upload
+- [ ] Editar/eliminar episódio pelo próprio utilizador (UI)
+- [ ] Progress bar de upload mais visível
 - [ ] Paginação ou infinite scroll
-- [ ] Remover `DEMO_PODCASTS` quando API estiver ligada
+- [ ] Badges de compressão (Módulo 3)
 
 ---
 
@@ -119,9 +129,9 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 - [x] Layout lateral `AdminLayout` + navegação por secção
 - [x] Painel: métricas + atalhos
-- [x] Utilizadores: listar, editar (modal), papel, eliminar
-- [x] Publicações: criar, editar, remover (metadados; áudio via Módulo 2)
-- [x] Transmissões: criar, editar, estados, eliminar
+- [x] Utilizadores: listar, editar (modal), papel (`user`/`creator`/`admin`), eliminar
+- [x] Publicações: criar, editar, remover (metadados)
+- [x] Transmissões: criar, editar, estados, eliminar (BD)
 - [x] Registo de acções admin (`/admin/logs`)
 - [x] Integração com API `/api/admin/*`
 
@@ -135,6 +145,25 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ---
 
+## Fase 2d — Live WebSocket 🟡 (Passo 1)
+
+### Feito
+
+- [x] `features/live/` — types, service, hooks, páginas
+- [x] Hub `/live` com lista de sessões (`GET /api/live`)
+- [x] Broadcast `/live/broadcast` — captura média + WS
+- [x] Watch `/live/:id` — listener WS
+- [x] Nav «Ao vivo» e atalho no dashboard
+- [x] Restrição de broadcast a criadores
+
+### Por concluir (Passo 2)
+
+- [ ] Ligar criação de transmissão à tabela `streams`
+- [ ] Estados UX: reconexão, sessão expirada, sem broadcaster
+- [ ] Gravação ou VOD pós-live
+
+---
+
 ## Fase 3 — Compressão (feedback na UI)
 
 - [ ] Badge por podcast: pendente / a processar / concluído / falhou
@@ -143,19 +172,25 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ---
 
-## Fase 4 — Streaming e player
+## Fase 4 — Streaming e player (~40%)
 
-- [ ] `AudioPlayer` — play/pause, seek, volume
-- [ ] Integração `GET /stream/:id`
-- [ ] Mini-player opcional
+### Feito
+
+- [x] Player básico no detalhe (`/podcasts/:id`)
+- [x] `GET /api/stream/:id` integrado
+
+### Por concluir
+
+- [ ] `AudioPlayer` reutilizável — seek, volume, fila
+- [ ] Mini-player opcional na navegação
 
 ---
 
 ## Fase 5 — Downloads e pesquisa global
 
-- [ ] Pesquisa global ou URL `?q=`
-- [ ] Download com estados
-- [ ] Electron: diálogo guardar ficheiro
+- [x] Download de episódio (`GET /podcasts/:id/download`)
+- [ ] Pesquisa global ou URL `?q=` fora da biblioteca
+- [ ] Electron: diálogo guardar ficheiro nativo
 
 ---
 
@@ -173,13 +208,14 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ---
 
-## Fase 7 — Qualidade
+## Fase 7 — Qualidade e Electron
 
-- [ ] Responsivo 360 / 768 / 1280
-- [ ] Testes E2E (login, upload, play)
-- [ ] Testes unitários (validações, hooks)
 - [x] README do client actualizado
-- [ ] Build Electron smoke test
+- [x] Electron dev (frameless, title bar, redirect)
+- [ ] Responsivo 360 / 768 / 1280 (revisão final)
+- [ ] Testes E2E (login, upload, play, live)
+- [ ] Testes unitários (validações, hooks)
+- [ ] Build Electron smoke test + ícone installer
 
 ---
 
@@ -187,21 +223,24 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ```
 client/src/
-├── app/App.tsx
+├── app/
+│   ├── App.tsx
+│   └── ElectronRootRedirect.tsx
 ├── features/
-│   ├── auth/           ✅
+│   ├── auth/           ✅ (+ CreatorRoute, reset)
 │   ├── dashboard/      ✅
-│   ├── podcasts/       ✅ (demo + forms)
+│   ├── podcasts/       ✅ (API + upload)
 │   ├── profile/        ✅ (UI)
 │   ├── presence/       ✅
+│   ├── live/           🟡 Passo 1
 │   └── admin/          ✅
 ├── pages/              # re-exports
 └── shared/
     ├── api/
-    ├── components/campus/
-    ├── layouts/
+    ├── components/campus/  (+ DesktopTitleBar)
+    ├── layouts/            (+ ElectronShell)
     ├── navigation/
-    └── hooks/
+    └── hooks/              (+ useDebounce)
 ```
 
 ---
@@ -210,22 +249,23 @@ client/src/
 
 | Área | Estado client | Endpoints |
 |------|---------------|-----------|
-| Auth | ✅ | login, register, profile, forgot-password |
+| Auth | ✅ | login, register, profile, forgot-password, reset-password |
 | Presença | ✅ | heartbeat, leave, online |
 | Admin | ✅ | overview, users, podcasts, streams, logs, categories |
-| Podcasts (user) | ⏳ | CRUD + upload multipart |
-| Stream | ⏳ | player URL |
+| Podcasts (user) | ✅ | GET, POST multipart, DELETE, download |
+| Stream | ✅ | GET /stream/:id (player) |
+| Live WS | 🟡 | GET /live + ws://…/live |
 | Perfil | ⏳ | PUT profile, password |
 
 ---
 
 ## Prioridades recomendadas
 
-1. **Ligar upload** — `POST /api/podcasts` multipart  
-2. **Listagem real** — remover demo na biblioteca  
-3. **Reset password** — rota + backend email  
-4. **Player** — quando streaming existir  
-5. **Testes** — login + publicar + admin smoke  
+1. **Perfil API** — `PUT` perfil e password (Módulo 6)  
+2. **Live Passo 2** — unificar com `streams` do admin  
+3. **Compressão UI** — badges quando FFmpeg estiver activo  
+4. **Player** — componente reutilizável com seek/volume  
+5. **Testes** — login + publicar + live smoke  
 
 ---
 

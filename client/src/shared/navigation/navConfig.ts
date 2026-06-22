@@ -19,6 +19,14 @@ export const PUBLIC_NAV_ITEMS: NavItem[] = [
   { to: '/register', label: 'Criar conta', className: 'hidden sm:inline-flex' },
 ];
 
+const LIVE_NAV_ITEM: NavItem = {
+  to: '/live',
+  label: 'Ao vivo',
+  isActive: (pathname) =>
+    pathname === '/live' ||
+    (pathname.startsWith('/live/') && pathname !== '/live/broadcast'),
+};
+
 /** Sessão iniciada — área da aplicação (sem «Publicar»; ver getAppNavItems) */
 const APP_NAV_BASE: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', end: true },
@@ -29,6 +37,7 @@ const APP_NAV_BASE: NavItem[] = [
       pathname === '/podcasts' ||
       (pathname.startsWith('/podcasts/') && pathname !== '/podcasts/new'),
   },
+  LIVE_NAV_ITEM,
   { to: '/profile', label: 'Perfil', end: true },
 ];
 
@@ -51,7 +60,7 @@ export const getAppNavItems = (user: User | null): NavItem[] => {
   return isAdminUser(user) ? [...items, ADMIN_NAV_ITEM] : items;
 };
 
-const APP_ROUTE_PREFIXES = ['/dashboard', '/podcasts', '/profile', '/admin'] as const;
+const APP_ROUTE_PREFIXES = ['/dashboard', '/podcasts', '/live', '/profile', '/admin'] as const;
 
 export const isAppAreaRoute = (pathname: string): boolean =>
   APP_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

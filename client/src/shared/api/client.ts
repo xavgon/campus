@@ -37,8 +37,13 @@ export const fetchHealth = async () => {
 };
 
 export const getApiErrorMessage = (error: unknown): string => {
-  if (axios.isAxiosError(error) && error.response?.data?.message) {
-    return String(error.response.data.message);
+  if (axios.isAxiosError(error)) {
+    if (!error.response) {
+      return 'Não foi possível ligar à API. Confirma que o servidor está a correr (porta 3001) e que VITE_API_URL está correcto.';
+    }
+    if (error.response.data?.message) {
+      return String(error.response.data.message);
+    }
   }
   return 'Ocorreu um erro. Tente novamente.';
 };

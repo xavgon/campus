@@ -11,6 +11,7 @@ export interface Podcast {
   authorName: string;
   coverUrl?: string;
   audioUrl?: string;
+  videoUrl?: string;
   durationSeconds: number;
   status: PodcastStatus;
   createdAt: string;

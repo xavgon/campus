@@ -1,6 +1,6 @@
 # CAMPUS
 
-Plataforma multimédia de **podcasts educativos** — autenticação, gestão de episódios, presença em tempo real, painel de administração e (em desenvolvimento) compressão, streaming e downloads.
+Plataforma multimédia de **podcasts educativos** — autenticação, gestão de episódios, presença em tempo real, transmissão ao vivo (WebSocket), painel de administração e cliente desktop (Electron).
 
 Projeto académico · Multimédia 2026.
 
@@ -8,25 +8,33 @@ Projeto académico · Multimédia 2026.
 
 | Área | Estado | Resumo |
 |------|--------|--------|
-| **Autenticação** | ✅ Módulo 1 | Registo, login, JWT, perfil, modal «esqueci password» |
-| **Área autenticada** | ✅ | Dashboard, biblioteca de podcasts, publicar, perfil |
+| **Autenticação** | ✅ | Registo, login, JWT, perfil, «esqueci password», reset com token (`/reset-password`) |
+| **Papel criador (RF12)** | ✅ | `role = creator` — publicar podcasts e transmitir ao vivo |
+| **Área autenticada** | ✅ | Dashboard, biblioteca, detalhe, publicar (criadores), perfil |
+| **Podcasts (API)** | ✅ | Listagem com pesquisa/filtros (debounce), upload multipart, download, streaming |
 | **Presença** | ✅ | Heartbeat + contador de utilizadores ligados no dashboard |
-| **Admin** | ✅ | Painel `/admin` — utilizadores, publicações, transmissões, registo |
-| **Upload áudio** | ⏳ | Formulário validado no cliente; `POST` multipart pendente (Módulo 2) |
-| **FFmpeg / stream** | ⏳ | Planeado nos módulos 3–4 |
+| **Live (WebSocket)** | 🟡 Passo 1 | Hub `/live`, broadcast e ouvinte via WS `/live` (sessões em memória) |
+| **Admin** | ✅ | Painel `/admin` — utilizadores, publicações, transmissões (BD), registo |
+| **Electron** | ✅ | Janela frameless, barra de título CAMPUS, arranque em login/dashboard |
+| **FFmpeg / compressão** | ⏳ | Planeado nos módulos 3–4 |
+
+> **Nota:** As transmissões do painel admin (`streams` na BD) e as sessões live WebSocket são sistemas distintos — ainda não estão unificados.
 
 ## Estrutura do repositório
 
 ```
 Final-Pro/
 ├── client/                 # React 19 + Vite 8 + Tailwind 4 + Electron
+│   ├── electron/             # main.cjs, preload, menu
 │   ├── FRONTEND_ROADMAP.md   # Roadmap UI (versionado)
-│   └── README.md            # Guia do cliente
-├── server/                  # Express 5 + TypeScript + PostgreSQL
-├── DOCUMENTATION.md         # API, rotas, BD, admin (versionado)
-├── docs/                    # Documentação local (gitignored — cópia opcional)
-└── README.md                # Este ficheiro
+│   └── README.md             # Guia do cliente
+├── server/                   # Express 5 + TypeScript + PostgreSQL + ws
+├── DOCUMENTATION.md          # API, rotas, BD, live, admin (versionado)
+├── docs/                     # Documentação local (gitignored — cópia opcional)
+└── README.md                 # Este ficheiro
 ```
+
+Não existe `package.json` na raiz — os comandos `npm` correm em `client/` ou `server/`.
 
 ## Identidade visual
 
@@ -56,6 +64,8 @@ npm run dev
 
 - API: `http://localhost:3001`
 - Health: `GET /api/health`
+- WebSocket live: `ws://localhost:3001/live`
+- Página de teste (dev): `http://localhost:3001/live-test`
 
 Em desenvolvimento, ao arrancar com `DATABASE_URL` definido, o servidor aplica **patches de schema** (`role` em `users`, tabela `streams`, categorias) e garante a conta admin.
 
@@ -69,7 +79,8 @@ npm install
 npm run dev
 ```
 
-- UI: `http://localhost:5173`
+- UI: `http://localhost:5173` (ou `5174` se a porta 5173 estiver ocupada)
+- Em dev, o CORS do servidor aceita **qualquer porta** `localhost` / `127.0.0.1`
 
 ### 3. Cliente (Electron)
 
@@ -77,6 +88,10 @@ npm run dev
 cd client
 npm run electron:dev
 ```
+
+- Usa Vite em `:5173` com `--strictPort` — **não correr** `npm run dev` em paralelo na mesma porta
+- Em Electron, `/` redirecciona para login ou dashboard conforme a sessão
+- Janela sem moldura nativa (`frame: false`) com barra de título personalizada
 
 ## Conta de administrador (desenvolvimento)
 
@@ -86,26 +101,33 @@ npm run electron:dev
 | Password | `Campus123` |
 
 - Criada/atualizada por `ensureDefaultAdmin` (arranque em dev) ou `npm run db:seed` na pasta `server`.
-- Papel `role = admin` na base de dados.
-- Após migração, faz **logout e login** para o JWT incluir o papel.
+- Papel `role = admin` na base de dados (admin também pode publicar e transmitir).
+- Após migração ou alteração de papel, faz **logout e login** para o JWT reflectir o papel.
 
 Em `import.meta.env.DEV`, o login pré-preenche estas credenciais.
+
+Para testar o papel **criador**, um admin pode atribuir `role = creator` a outra conta em `/admin/users`.
 
 ## Rotas do frontend
 
 | Rota | Acesso | Descrição |
 |------|--------|-----------|
-| `/` | Público | Home |
-| `/explorar` | Público | Explorar (placeholder) |
+| `/` | Público | Home (web) · redirect em Electron |
+| `/explorar` | Público | Explorar |
 | `/login`, `/register` | Público | Autenticação |
+| `/reset-password` | Público | Nova password com `?token=` |
 | `/dashboard` | Autenticado | Hub pessoal, stats, episódios recentes, ligados agora |
-| `/podcasts` | Autenticado | Biblioteca com pesquisa e filtros |
-| `/podcasts/new` | Autenticado | Publicar episódio (validação local) |
+| `/podcasts` | Autenticado | Biblioteca com pesquisa e filtros (API) |
+| `/podcasts/:id` | Autenticado | Detalhe e player |
+| `/podcasts/new` | **Criador / admin** | Publicar episódio (upload multipart) |
+| `/live` | Autenticado | Hub de transmissões activas |
+| `/live/broadcast` | **Criador / admin** | Iniciar transmissão (câmara/microfone) |
+| `/live/:id` | Autenticado | Assistir transmissão em curso |
 | `/profile` | Autenticado | Perfil e segurança |
 | `/admin` | **Admin** | Painel de gestão |
-| `/admin/users` | Admin | Contas e papéis |
+| `/admin/users` | Admin | Contas e papéis (`user`, `creator`, `admin`) |
 | `/admin/posts` | Admin | Publicações (podcasts) |
-| `/admin/transmissions` | Admin | Transmissões |
+| `/admin/transmissions` | Admin | Transmissões (metadados na BD) |
 | `/admin/logs` | Admin | Registo de acções admin |
 
 ## API REST (resumo)
@@ -115,9 +137,14 @@ Base: `http://localhost:3001/api` · Autenticação: `Authorization: Bearer <tok
 | Grupo | Endpoints principais |
 |-------|----------------------|
 | **Health** | `GET /health` |
-| **Auth** | `POST /auth/register`, `/login`, `GET /auth/profile`, `POST /auth/forgot-password` |
+| **Auth** | `POST /auth/register`, `/login`, `GET /auth/profile`, `/forgot-password`, `/reset-password` |
+| **Podcasts** | `GET /podcasts`, `GET /podcasts/:id`, `POST /podcasts` (criador), `DELETE /podcasts/:id`, `GET /podcasts/:id/download` |
+| **Stream** | `GET /stream/:id` — áudio comprimido (token no header ou `?token=`) |
+| **Live** | `GET /live` — sessões WebSocket activas (memória) |
 | **Presença** | `POST /presence/heartbeat`, `/leave`, `GET /presence/online` |
 | **Admin** | `GET /admin/overview`, `/users`, `/podcasts`, `/streams`, `/logs`, `/categories` + CRUD |
+
+**WebSocket** (não REST): `ws://localhost:3001/live?token=…&role=broadcaster|listener&liveId=…`
 
 Detalhe completo: [DOCUMENTATION.md](./DOCUMENTATION.md).
 
@@ -126,7 +153,7 @@ Detalhe completo: [DOCUMENTATION.md](./DOCUMENTATION.md).
 Schema inicial: `server/src/database/schema.sql`  
 Patches idempotentes: `server/src/database/ensureSchemaPatches.ts`
 
-Tabelas principais: `users` (com `role`), `categories`, `podcasts`, `streams`, `logs`.
+Tabelas principais: `users` (com `role`: `user` \| `creator` \| `admin`), `categories`, `podcasts`, `streams`, `logs`.
 
 ```bash
 cd server
@@ -138,9 +165,10 @@ npm run db:seed      # patches + admin
 
 | Ficheiro | Conteúdo |
 |----------|----------|
-| [DOCUMENTATION.md](./DOCUMENTATION.md) | API, admin, presença, modelo de dados |
+| [DOCUMENTATION.md](./DOCUMENTATION.md) | API, live WS, admin, presença, modelo de dados |
 | [client/FRONTEND_ROADMAP.md](./client/FRONTEND_ROADMAP.md) | Roadmap e estado do frontend |
-| [client/README.md](./client/README.md) | Scripts, env, estrutura `src/` |
+| [client/README.md](./client/README.md) | Scripts, env, Electron, estrutura `src/` |
+| [server/README.md](./server/README.md) | Scripts e rotas do servidor |
 | `docs/` (local) | Fluxo por módulos — não versionado (ver `.gitignore`) |
 
 Desenvolvimento por módulos: seguir `docs/DEVELOPMENT_FLOW.md` no teu ambiente local.
@@ -149,13 +177,14 @@ Desenvolvimento por módulos: seguir `docs/DEVELOPMENT_FLOW.md` no teu ambiente 
 
 | Local | Comando | Descrição |
 |-------|---------|-----------|
-| server | `npm run dev` | API com hot reload |
+| server | `npm run dev` | API + WebSocket live |
 | server | `npm run typecheck` | TypeScript |
 | server | `npm run db:migrate` | Schema PostgreSQL |
 | server | `npm run db:seed` | Patches + admin |
-| client | `npm run dev` | Vite |
+| client | `npm run dev` | Vite (web) |
 | client | `npm run build` | Build produção |
-| client | `npm run electron:dev` | Desktop + Vite |
+| client | `npm run electron:dev` | Desktop + Vite (`:5173` fixa) |
+| client | `npm run electron:pack` | Instalador Windows |
 
 ## Licença
 

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS podcasts (
   title VARCHAR(200) NOT NULL,
   description TEXT,
   audio_url VARCHAR(500),
+  video_url VARCHAR(500),
   cover_url VARCHAR(500),
   original_size BIGINT,
   compressed_size BIGINT,

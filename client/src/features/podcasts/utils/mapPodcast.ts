@@ -23,6 +23,7 @@ export const mapPodcastFromApi = (api: PodcastApi): Podcast => ({
   authorName: api.author_nome,
   coverUrl: resolveMediaUrl(api.cover_url),
   audioUrl: resolveMediaUrl(api.audio_url),
+  videoUrl: resolveMediaUrl(api.video_url),
   durationSeconds: 0,
   status: deriveStatus(api),
   createdAt: api.created_at,

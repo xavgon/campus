@@ -16,6 +16,7 @@ export interface CreatePodcastInput {
   description?: string;
   categoryId: string;
   audio: File;
+  video?: File | null;
   cover?: File | null;
 }
 
@@ -46,6 +47,9 @@ export const createPodcast = async (input: CreatePodcastInput): Promise<Podcast>
     formData.append('category_id', input.categoryId);
   }
   formData.append('audio', input.audio);
+  if (input.video) {
+    formData.append('video', input.video);
+  }
   if (input.cover) {
     formData.append('cover', input.cover);
   }
@@ -61,7 +65,7 @@ export const deletePodcast = async (id: string): Promise<void> => {
   await api.delete(`/podcasts/${id}`);
 };
 
-/** URL de streaming com token na query (necessário para `<audio src>`). */
+/** URL de streaming com token na query (necessário para `<audio>` / `<video>`). */
 export const getPodcastStreamUrl = (podcastId: string): string | null => {
   const token = getToken();
   if (!token) return null;
@@ -69,8 +73,17 @@ export const getPodcastStreamUrl = (podcastId: string): string | null => {
   return `${base}/stream/${podcastId}?token=${encodeURIComponent(token)}`;
 };
 
+export const getPodcastVideoStreamUrl = (podcastId: string): string | null => {
+  const token = getToken();
+  if (!token) return null;
+  const base = api.defaults.baseURL ?? 'http://localhost:3001/api';
+  return `${base}/stream/${podcastId}/video?token=${encodeURIComponent(token)}`;
+};
+
 export const canPlayPodcast = (podcast: Podcast): boolean =>
-  Boolean(podcast.audioUrl) && podcast.status !== 'draft';
+  Boolean(podcast.audioUrl || podcast.videoUrl) && podcast.status !== 'draft';
+
+export const hasPodcastVideo = (podcast: Podcast): boolean => Boolean(podcast.videoUrl);
 
 export const downloadPodcast = async (podcast: Podcast): Promise<void> => {
   const { data } = await api.get<Blob>(`/podcasts/${podcast.id}/download`, {

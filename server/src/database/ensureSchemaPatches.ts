@@ -34,5 +34,10 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status)
   `);
 
+  await pool.query(`
+    ALTER TABLE podcasts
+    ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)
+  `);
+
   await ensureDefaultCategories();
 };

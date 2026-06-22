@@ -1,7 +1,7 @@
 import type { User } from '@/features/auth/types/auth.types';
 import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 
-export type DashboardShortcutIcon = 'podcasts' | 'publish' | 'explore' | 'profile';
+export type DashboardShortcutIcon = 'podcasts' | 'publish' | 'live' | 'explore' | 'profile';
 
 export interface DashboardShortcut {
   to: string;
@@ -26,6 +26,12 @@ export const DASHBOARD_SHORTCUTS: DashboardShortcut[] = [
     icon: 'publish',
     accent: true,
     requiresPublish: true,
+  },
+  {
+    to: '/live',
+    title: 'Ao vivo',
+    description: 'Ver emissões em curso ou transmitir.',
+    icon: 'live',
   },
   {
     to: '/explorar',

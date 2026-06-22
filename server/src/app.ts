@@ -3,6 +3,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import { config } from './config';
+import { corsOptions } from './config/cors';
 import { ensureSchemaPatches } from './database/ensureSchemaPatches';
 import { ensureDefaultAdmin } from './database/seedAdmin';
 import { attachLiveGateway } from './live/live.gateway';
@@ -18,12 +19,7 @@ import { liveRouter } from './routes/live.routes';
 
 const app = express();
 
-app.use(
-  cors({
-    origin: config.clientUrl,
-    credentials: true,
-  }),
-);
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

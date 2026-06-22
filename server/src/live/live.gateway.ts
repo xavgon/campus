@@ -164,7 +164,12 @@ const handleListener = (ws: WebSocket, payload: JwtPayload, liveId: string) => {
 
   if (!session) {
     send(ws, { type: 'error', message: 'Live não encontrada ou já terminou.' });
-    ws.close(1008, 'Live not found');
+    // Pequeno atraso para o cliente processar a mensagem antes do close
+    setTimeout(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close(1008, 'Live not found');
+      }
+    }, 100);
     return;
   }
 

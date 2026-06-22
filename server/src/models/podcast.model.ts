@@ -7,6 +7,7 @@ export interface Podcast {
   title: string;
   description: string | null;
   audio_url: string | null;
+  video_url: string | null;
   cover_url: string | null;
   original_size: number | null;
   compressed_size: number | null;
@@ -22,6 +23,7 @@ export interface CreatePodcastData {
   title: string;
   description?: string | null;
   audio_url?: string | null;
+  video_url?: string | null;
   cover_url?: string | null;
   original_size?: number | null;
   category_id?: number | null;
@@ -30,7 +32,7 @@ export interface CreatePodcastData {
 
 const podcastSelect = `
   p.id, p.title, p.description,
-  p.audio_url, p.cover_url,
+  p.audio_url, p.video_url, p.cover_url,
   p.original_size, p.compressed_size, p.compression_ratio,
   p.category_id, c.name AS category_name,
   p.user_id, u.nome AS author_nome,
@@ -96,13 +98,14 @@ export const findPodcastById = async (id: string): Promise<Podcast | null> => {
 
 export const insertPodcast = async (data: CreatePodcastData): Promise<Podcast> => {
   const result = await getPool().query(
-    `INSERT INTO podcasts (title, description, audio_url, cover_url, original_size, category_id, user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `INSERT INTO podcasts (title, description, audio_url, video_url, cover_url, original_size, category_id, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING id`,
     [
       data.title,
       data.description ?? null,
       data.audio_url ?? null,
+      data.video_url ?? null,
       data.cover_url ?? null,
       data.original_size ?? null,
       data.category_id ?? null,
@@ -133,14 +136,14 @@ export const deletePodcastAndReturnPath = async (
   id: string,
   userId: string,
   isAdmin: boolean,
-): Promise<{ audio_url: string | null; cover_url: string | null } | null> => {
+): Promise<{ audio_url: string | null; video_url: string | null; cover_url: string | null } | null> => {
   const check = await getPool().query(
-    'SELECT audio_url, cover_url, user_id FROM podcasts WHERE id = $1',
+    'SELECT audio_url, video_url, cover_url, user_id FROM podcasts WHERE id = $1',
     [id],
   );
 
   const row = check.rows[0] as
-    | { audio_url: string | null; cover_url: string | null; user_id: string }
+    | { audio_url: string | null; video_url: string | null; cover_url: string | null; user_id: string }
     | undefined;
 
   if (!row) return null;
@@ -148,7 +151,7 @@ export const deletePodcastAndReturnPath = async (
 
   await getPool().query('DELETE FROM podcasts WHERE id = $1', [id]);
 
-  return { audio_url: row.audio_url, cover_url: row.cover_url };
+  return { audio_url: row.audio_url, video_url: row.video_url, cover_url: row.cover_url };
 };
 
 export interface AdminPodcastListItem {

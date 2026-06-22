@@ -4,6 +4,7 @@ export interface PodcastApi {
   title: string;
   description: string | null;
   audio_url: string | null;
+  video_url: string | null;
   cover_url: string | null;
   original_size: number | null;
   compressed_size: number | null;

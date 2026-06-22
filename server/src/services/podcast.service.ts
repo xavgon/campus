@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { compressAudio } from '../compression/compress';
+import { extractAudioFromVideo } from '../compression/extractAudio';
 import { AppError } from '../middleware/errorHandler';
 import {
   deletePodcastAndReturnPath,
@@ -36,30 +37,53 @@ export const createPodcast = async (
   userId: string,
   files: {
     audio?: Express.Multer.File;
+    video?: Express.Multer.File;
     cover?: Express.Multer.File;
   },
 ): Promise<Podcast> => {
-  if (!files.audio) {
-    throw new AppError('Ficheiro de áudio é obrigatório', 400);
+  if (!files.audio && !files.video) {
+    throw new AppError('Ficheiro de áudio ou vídeo é obrigatório', 400);
   }
 
-  const audio_url = `/uploads/audio/${files.audio.filename}`;
+  let audio_url: string | null = null;
+  let video_url: string | null = null;
+  let original_size = 0;
+  let audioPhysicalPath: string | null = null;
+
+  if (files.video) {
+    video_url = `/uploads/videos/${files.video.filename}`;
+    original_size += files.video.size;
+  }
+
+  if (files.audio) {
+    audio_url = `/uploads/audio/${files.audio.filename}`;
+    original_size += files.audio.size;
+    audioPhysicalPath = path.join(process.cwd(), audio_url);
+  } else if (files.video) {
+    const videoPath = path.join(process.cwd(), video_url!);
+    const extractedPath = await extractAudioFromVideo(videoPath);
+    const extractedName = path.basename(extractedPath);
+    audio_url = `/uploads/audio/${extractedName}`;
+    audioPhysicalPath = extractedPath;
+    original_size += fs.statSync(extractedPath).size;
+  }
+
   const cover_url = files.cover ? `/uploads/covers/${files.cover.filename}` : null;
-  const original_size = files.audio.size;
 
   const podcast = await insertPodcast({
     title: input.title,
     description: input.description,
     category_id: input.category_id,
     audio_url,
+    video_url,
     cover_url,
     original_size,
     user_id: userId,
   });
 
-  // Compressão assíncrona — não bloqueia a resposta HTTP
-  const physicalPath = path.join(process.cwd(), audio_url);
-  void runCompression(podcast.id, physicalPath);
+  if (audioPhysicalPath) {
+    void runCompression(podcast.id, audioPhysicalPath);
+  }
 
   return podcast;
 };
@@ -151,7 +175,7 @@ export const deletePodcast = async (
   }
 
   // Apagar ficheiros físicos do disco
-  for (const urlField of [result.audio_url, result.cover_url]) {
+  for (const urlField of [result.audio_url, result.video_url, result.cover_url]) {
     if (!urlField) continue;
     // urlField = "/uploads/audio/filename.mp3" → caminho relativo ao processo
     const filePath = path.join(process.cwd(), urlField);

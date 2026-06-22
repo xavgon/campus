@@ -7,10 +7,11 @@ import { AppError } from './errorHandler';
 // ─── Garantir que as pastas existem ──────────────────────────────────────────
 
 const audioDir = path.join(config.uploadDir, 'audio');
+const videosDir = path.join(config.uploadDir, 'videos');
 const coversDir = path.join(config.uploadDir, 'covers');
 const avatarsDir = path.join(config.uploadDir, 'avatars');
 
-for (const dir of [audioDir, coversDir, avatarsDir]) {
+for (const dir of [audioDir, videosDir, coversDir, avatarsDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -24,6 +25,13 @@ const AUDIO_MIME_TYPES = new Set([
   'audio/x-m4a',
   'audio/flac',
   'audio/aac',
+  'audio/webm',       // gravações live (MediaRecorder)
+]);
+
+const VIDEO_MIME_TYPES = new Set([
+  'video/webm',
+  'video/mp4',
+  'video/ogg',
 ]);
 
 const IMAGE_MIME_TYPES = new Set([
@@ -33,12 +41,31 @@ const IMAGE_MIME_TYPES = new Set([
   'image/webp',
 ]);
 
+/** Browsers/MediaRecorder enviam codecs no MIME (ex.: video/webm;codecs=vp9,opus). */
+const normalizeMime = (mimetype: string, fieldname: string, originalname: string): string => {
+  const base = mimetype.split(';')[0]?.trim().toLowerCase();
+  if (base && base !== 'application/octet-stream') return base;
+
+  const ext = path.extname(originalname).toLowerCase();
+  if (ext === '.webm') return fieldname === 'audio' ? 'audio/webm' : 'video/webm';
+  if (ext === '.mp4') return fieldname === 'video' ? 'video/mp4' : 'audio/mp4';
+  if (ext === '.mp3') return 'audio/mpeg';
+  if (ext === '.wav') return 'audio/wav';
+  return base;
+};
+
+const isAudioMime = (mimetype: string): boolean => AUDIO_MIME_TYPES.has(mimetype);
+const isVideoMime = (mimetype: string): boolean => VIDEO_MIME_TYPES.has(mimetype);
+
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
 const storage = multer.diskStorage({
   destination(_req, file, cb) {
-    if (AUDIO_MIME_TYPES.has(file.mimetype)) {
+    const mime = normalizeMime(file.mimetype, file.fieldname, file.originalname);
+    if (isAudioMime(mime)) {
       cb(null, audioDir);
+    } else if (isVideoMime(mime)) {
+      cb(null, videosDir);
     } else {
       cb(null, coversDir);
     }
@@ -53,11 +80,17 @@ const storage = multer.diskStorage({
 // ─── Filtro de ficheiros ──────────────────────────────────────────────────────
 
 const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
-  if (file.fieldname === 'audio' && !AUDIO_MIME_TYPES.has(file.mimetype)) {
-    cb(new AppError('Formato de áudio inválido. Use MP3, WAV, OGG, M4A, FLAC ou AAC.'));
+  const mime = normalizeMime(file.mimetype, file.fieldname, file.originalname);
+
+  if (file.fieldname === 'audio' && !isAudioMime(mime)) {
+    cb(new AppError('Formato de áudio inválido. Use MP3, WAV, OGG, M4A, FLAC, AAC ou WebM.'));
     return;
   }
-  if (file.fieldname === 'cover' && !IMAGE_MIME_TYPES.has(file.mimetype)) {
+  if (file.fieldname === 'video' && !isVideoMime(mime)) {
+    cb(new AppError('Formato de vídeo inválido. Use WebM ou MP4.'));
+    return;
+  }
+  if (file.fieldname === 'cover' && !IMAGE_MIME_TYPES.has(mime)) {
     cb(new AppError('Formato de imagem inválido. Use JPG, PNG ou WebP.'));
     return;
   }
@@ -103,5 +136,6 @@ export const uploadPodcast = multer({
   },
 }).fields([
   { name: 'audio', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
   { name: 'cover', maxCount: 1 },
 ]);

@@ -8,6 +8,8 @@ import {
   downloadPodcast,
   fetchPodcastById,
   getPodcastStreamUrl,
+  getPodcastVideoStreamUrl,
+  hasPodcastVideo,
 } from '@/features/podcasts/services/podcast.service';
 import type { Podcast } from '@/features/podcasts/types/podcast';
 import { formatFileSize } from '@/features/podcasts/utils/formatFileSize';
@@ -94,7 +96,9 @@ export const PodcastDetailPage = () => {
   }
 
   const streamUrl = getPodcastStreamUrl(podcast.id);
-  const playable = canPlayPodcast(podcast) && streamUrl;
+  const videoStreamUrl = getPodcastVideoStreamUrl(podcast.id);
+  const withVideo = hasPodcastVideo(podcast);
+  const playable = canPlayPodcast(podcast) && (withVideo ? videoStreamUrl : streamUrl);
 
   const onDownload = async () => {
     setDownloadError(null);
@@ -165,19 +169,42 @@ export const PodcastDetailPage = () => {
 
           {playable ? (
             <div className="space-y-4">
-              <AudioPlayer src={streamUrl} title={podcast.title} />
+              {withVideo && videoStreamUrl ? (
+                <div className="campus-panel overflow-hidden bg-black">
+                  <video
+                    src={videoStreamUrl}
+                    controls
+                    className="aspect-video w-full"
+                    title={podcast.title}
+                  >
+                    O teu browser não suporta reprodução de vídeo.
+                  </video>
+                </div>
+              ) : streamUrl ? (
+                <AudioPlayer src={streamUrl} title={podcast.title} />
+              ) : null}
               <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void onDownload()}
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? 'A descarregar…' : 'Descarregar episódio'}
-                </Button>
-                <p className="text-xs text-campus-muted">
-                  Guarda o áudio no dispositivo para ouvir offline.
-                </p>
+                {!withVideo && (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void onDownload()}
+                      disabled={isDownloading}
+                    >
+                      {isDownloading ? 'A descarregar…' : 'Descarregar episódio'}
+                    </Button>
+                    <p className="text-xs text-campus-muted">
+                      Guarda o áudio no dispositivo para ouvir offline.
+                    </p>
+                  </>
+                )}
+                {withVideo && (
+                  <p className="text-xs text-campus-muted">
+                    Episódio com vídeo e áudio integrado. O áudio comprimido fica disponível para
+                    podcasts só de áudio após o processamento.
+                  </p>
+                )}
               </div>
               {downloadError && <Alert title="Download falhou" message={downloadError} />}
             </div>
