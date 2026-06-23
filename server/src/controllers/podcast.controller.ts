@@ -40,6 +40,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
   const files = {
     audio: multerFiles?.['audio']?.[0],
+    video: multerFiles?.['video']?.[0],
     cover: multerFiles?.['cover']?.[0],
   };
 

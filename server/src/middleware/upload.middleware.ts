@@ -6,11 +6,12 @@ import { AppError } from './errorHandler';
 
 // ─── Garantir que as pastas existem ──────────────────────────────────────────
 
-const audioDir = path.join(config.uploadDir, 'audio');
+const audioDir  = path.join(config.uploadDir, 'audio');
 const coversDir = path.join(config.uploadDir, 'covers');
 const avatarsDir = path.join(config.uploadDir, 'avatars');
+const videoDir  = path.join(config.uploadDir, 'video');
 
-for (const dir of [audioDir, coversDir, avatarsDir]) {
+for (const dir of [audioDir, coversDir, avatarsDir, videoDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -26,6 +27,13 @@ const AUDIO_MIME_TYPES = new Set([
   'audio/aac',
 ]);
 
+const VIDEO_MIME_TYPES = new Set([
+  'video/mp4',        // H.264 / H.265
+  'video/webm',       // VP9
+  'video/quicktime',  // MOV
+  'video/x-matroska', // MKV
+]);
+
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/jpg',
@@ -39,6 +47,8 @@ const storage = multer.diskStorage({
   destination(_req, file, cb) {
     if (AUDIO_MIME_TYPES.has(file.mimetype)) {
       cb(null, audioDir);
+    } else if (VIDEO_MIME_TYPES.has(file.mimetype)) {
+      cb(null, videoDir);
     } else {
       cb(null, coversDir);
     }
@@ -55,6 +65,10 @@ const storage = multer.diskStorage({
 const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
   if (file.fieldname === 'audio' && !AUDIO_MIME_TYPES.has(file.mimetype)) {
     cb(new AppError('Formato de áudio inválido. Use MP3, WAV, OGG, M4A, FLAC ou AAC.'));
+    return;
+  }
+  if (file.fieldname === 'video' && !VIDEO_MIME_TYPES.has(file.mimetype)) {
+    cb(new AppError('Formato de vídeo inválido. Use MP4, WebM, MOV ou MKV.'));
     return;
   }
   if (file.fieldname === 'cover' && !IMAGE_MIME_TYPES.has(file.mimetype)) {
@@ -103,5 +117,8 @@ export const uploadPodcast = multer({
   },
 }).fields([
   { name: 'audio', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
   { name: 'cover', maxCount: 1 },
 ]);
+
+export { VIDEO_MIME_TYPES };

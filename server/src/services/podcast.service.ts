@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { compressAudio, compressImage } from '../compression/compress';
+import { compressAudio, compressImage, compressVideo } from '../compression/compress';
 import { AppError } from '../middleware/errorHandler';
 import {
   deletePodcastAndReturnPath,
@@ -36,16 +36,19 @@ export const createPodcast = async (
   userId: string,
   files: {
     audio?: Express.Multer.File;
+    video?: Express.Multer.File;
     cover?: Express.Multer.File;
   },
 ): Promise<Podcast> => {
-  if (!files.audio) {
-    throw new AppError('Ficheiro de áudio é obrigatório', 400);
+  if (!files.audio && !files.video) {
+    throw new AppError('Ficheiro de áudio ou vídeo é obrigatório', 400);
   }
 
-  const audio_url = `/uploads/audio/${files.audio.filename}`;
+  const mediaFile = files.audio ?? files.video!;
+  const mediaFolder = files.audio ? 'audio' : 'video';
+  const audio_url = `/uploads/${mediaFolder}/${mediaFile.filename}`;
   const cover_url = files.cover ? `/uploads/covers/${files.cover.filename}` : null;
-  const original_size = files.audio.size;
+  const original_size = mediaFile.size;
 
   const podcast = await insertPodcast({
     title: input.title,
@@ -58,8 +61,13 @@ export const createPodcast = async (
   });
 
   // Compressão assíncrona — não bloqueia a resposta HTTP
-  const physicalAudioPath = path.join(process.cwd(), audio_url);
-  void runAudioCompression(podcast.id, physicalAudioPath);
+  const physicalMediaPath = path.join(process.cwd(), audio_url);
+  if (files.audio) {
+    void runAudioCompression(podcast.id, physicalMediaPath);
+  } else if (files.video) {
+    // Comprime com H.264 por defeito (melhor compatibilidade)
+    void runVideoCompression(podcast.id, physicalMediaPath, 'h264');
+  }
 
   // Compressão da capa (imagem), se existir
   if (files.cover) {
@@ -82,6 +90,31 @@ const runImageCompression = async (label: string, inputPath: string): Promise<vo
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[CAMPUS] Compressão de imagem falhou (${label}): ${msg}`);
+  }
+};
+
+const runVideoCompression = async (
+  podcastId: string,
+  inputPath: string,
+  codec: 'h264' | 'h265' | 'vp9',
+): Promise<void> => {
+  try {
+    console.log(`[CAMPUS] Compressão de vídeo iniciada (${codec}): ${podcastId}`);
+    const result = await compressVideo(inputPath, codec);
+
+    const ext = codec === 'vp9' ? '.webm' : '.mp4';
+    const compressedUrl = `/uploads/video/compressed/${path.basename(result.outputPath, path.extname(result.outputPath))}${ext}`;
+
+    await updatePodcastCompression(podcastId, result.compressedSize, result.compressionRatio, compressedUrl);
+
+    console.log(
+      `[CAMPUS] Vídeo comprimido (${codec}): ${podcastId} | ` +
+      `${result.originalSize} → ${result.compressedSize} bytes | ` +
+      `${result.compressionRatio}% redução`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[CAMPUS] Compressão de vídeo falhou para ${podcastId}: ${msg}`);
   }
 };
 
