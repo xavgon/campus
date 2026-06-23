@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
+import { publishPodcast } from '@/features/podcasts/services/podcast.service';
+import { getApiErrorMessage } from '@/shared/api/client';
 import { FileDropzone } from '@/features/podcasts/components/FileDropzone';
 import {
   AUDIO_ACCEPT,
@@ -22,6 +24,7 @@ import { TextAreaField } from '@/shared/components/campus/TextAreaField';
 import { Button } from '@/shared/components/ui/Button';
 
 export const PublishPage = () => {
+  const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -69,11 +72,20 @@ export const PublishPage = () => {
     if (hasPublishErrors(nextErrors)) return;
 
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setIsSubmitting(false);
-    setNotice(
-      'Validação concluída. O envio multipart para a API será activado no Módulo 2 (compressão FFmpeg a seguir).',
-    );
+    try {
+      const formData = new FormData();
+      formData.append('title', title);
+      if (description) formData.append('description', description);
+      if (categoryId) formData.append('category_id', categoryId);
+      if (audio) formData.append('audio', audio);
+      if (cover) formData.append('cover', cover);
+
+      await publishPodcast(formData);
+      navigate('/podcasts');
+    } catch (err) {
+      setNotice(getApiErrorMessage(err));
+      setIsSubmitting(false);
+    }
   };
 
   return (

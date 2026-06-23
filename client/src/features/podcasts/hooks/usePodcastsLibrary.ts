@@ -1,8 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DEMO_PODCASTS } from '@/features/podcasts/data/demoPodcasts';
+import { fetchPodcasts, type ApiPodcast } from '@/features/podcasts/services/podcast.service';
 import type { Podcast, PodcastLibraryFilters, PodcastSort } from '@/features/podcasts/types/podcast';
 import { computePodcastStats } from '@/features/podcasts/utils/computePodcastStats';
 import { filterAndSortPodcasts } from '@/features/podcasts/utils/filterPodcasts';
+import { SERVER_URL } from '@/shared/api/client';
+
+const mapApiPodcast = (p: ApiPodcast): Podcast => ({
+  id: p.id,
+  title: p.title,
+  description: p.description ?? '',
+  categoryId: String(p.category_id ?? ''),
+  categoryName: p.category_name ?? 'Sem categoria',
+  coverUrl: p.cover_url ? `${SERVER_URL}${p.cover_url}` : undefined,
+  durationSeconds: 0,
+  status: p.compressed_size ? 'published' : 'processing',
+  createdAt: p.created_at,
+});
 
 const DEFAULT_FILTERS: PodcastLibraryFilters = {
   search: '',
@@ -20,11 +33,15 @@ export const usePodcastsLibrary = () => {
     setIsLoading(true);
 
     const load = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      if (cancelled) return;
-      // Substituir por fetchMyPodcasts() quando a API existir (Módulo 2)
-      setPodcasts(DEMO_PODCASTS);
-      setIsLoading(false);
+      try {
+        const data = await fetchPodcasts();
+        if (cancelled) return;
+        setPodcasts(data.map(mapApiPodcast));
+      } catch {
+        if (!cancelled) setPodcasts([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
 
     void load();
