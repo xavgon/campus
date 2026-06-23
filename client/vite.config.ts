@@ -12,6 +12,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    https: {
+      key:  './certs/servidor.key',
+      cert: './certs/servidor.crt',
+    },
   },
   base: './',
 });

@@ -38,3 +38,9 @@ coverage/
 
 # Documentação local (não versionada)
 docs/
+
+# Certificados SSL (chaves privadas nunca vão ao git)
+server/certs/*.key
+server/certs/*.csr
+server/certs/*.srl
+client/certs/
