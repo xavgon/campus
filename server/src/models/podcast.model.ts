@@ -12,6 +12,7 @@ export interface Podcast {
   original_size: number | null;
   compressed_size: number | null;
   compression_ratio: number | null;
+  processing_time_ms: number | null;
   category_id: number | null;
   category_name: string | null;
   user_id: string;
@@ -33,7 +34,7 @@ export interface CreatePodcastData {
 const podcastSelect = `
   p.id, p.title, p.description,
   p.audio_url, p.video_url, p.cover_url,
-  p.original_size, p.compressed_size, p.compression_ratio,
+  p.original_size, p.compressed_size, p.compression_ratio, p.processing_time_ms,
   p.category_id, c.name AS category_name,
   p.user_id, u.nome AS author_nome,
   p.created_at
@@ -118,19 +119,47 @@ export const insertPodcast = async (data: CreatePodcastData): Promise<Podcast> =
   return podcast;
 };
 
+export const updatePodcastCompressedMedia = async (
+  id: string,
+  media: 'audio' | 'video',
+  compressedMediaUrl: string,
+): Promise<void> => {
+  const column = media === 'video' ? 'video_url' : 'audio_url';
+  await getPool().query(
+    `UPDATE podcasts SET ${column} = $1 WHERE id = $2`,
+    [compressedMediaUrl, id],
+  );
+};
+
+export const finalizePodcastCompression = async (
+  id: string,
+  compressedSize: number,
+  compressionRatio: number,
+  processingTimeMs: number,
+): Promise<void> => {
+  await getPool().query(
+    `UPDATE podcasts
+     SET compressed_size = $1, compression_ratio = $2, processing_time_ms = $3
+     WHERE id = $4`,
+    [compressedSize, compressionRatio, processingTimeMs, id],
+  );
+};
+
+/** @deprecated Usar updatePodcastCompressedMedia + finalizePodcastCompression */
 export const updatePodcastCompression = async (
   id: string,
   compressedSize: number,
   compressionRatio: number,
   compressedMediaUrl: string,
+  processingTimeMs: number,
   media: 'audio' | 'video' = 'audio',
 ): Promise<void> => {
   const column = media === 'video' ? 'video_url' : 'audio_url';
   await getPool().query(
     `UPDATE podcasts
-     SET compressed_size = $1, compression_ratio = $2, ${column} = $3
-     WHERE id = $4`,
-    [compressedSize, compressionRatio, compressedMediaUrl, id],
+     SET compressed_size = $1, compression_ratio = $2, ${column} = $3, processing_time_ms = $4
+     WHERE id = $5`,
+    [compressedSize, compressionRatio, compressedMediaUrl, processingTimeMs, id],
   );
 };
 

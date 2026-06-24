@@ -1,5 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  clearPodcastCompressionJobs,
+  completePodcastAudioCompression,
+  completePodcastVideoCompression,
+  failPodcastCompressionJob,
+  registerPodcastCompressionJobs,
+} from '../compression/compressionJobs';
 import { compressAudio, compressImage, compressVideo } from '../compression/compress';
 import { extractAudioFromVideo } from '../compression/extractAudio';
 import {
@@ -17,7 +24,6 @@ import {
   insertPodcast,
   listPodcasts,
   updatePodcastById,
-  updatePodcastCompression,
   type Podcast,
 } from '../models/podcast.model';
 import type { CreatePodcastInput, UpdatePodcastInput } from '../validations/podcast.validation';
@@ -90,6 +96,12 @@ export const createPodcast = async (
     user_id: userId,
   });
 
+  const compressionJobs =
+    (audioPhysicalPath ? 1 : 0) + (videoPhysicalPath ? 1 : 0);
+  if (compressionJobs > 0) {
+    registerPodcastCompressionJobs(podcast.id, compressionJobs, original_size);
+  }
+
   if (audioPhysicalPath) {
     void runAudioCompression(podcast.id, audioPhysicalPath);
   }
@@ -136,23 +148,18 @@ const runVideoCompression = async (
     const ext = codec === 'vp9' ? '.webm' : '.mp4';
     const compressedUrl = `/uploads/video/compressed/${path.basename(result.outputPath, path.extname(result.outputPath))}${ext}`;
 
-    await updatePodcastCompression(
-      podcastId,
-      result.compressedSize,
-      result.compressionRatio,
-      compressedUrl,
-      'video',
-    );
+    await completePodcastVideoCompression(podcastId, result, compressedUrl);
 
     console.log(
       `[CAMPUS] Vídeo comprimido (${codec}): ${podcastId} | ` +
       `${result.originalSize} → ${result.compressedSize} bytes | ` +
-      `${result.compressionRatio}% redução`,
+      `${result.compressionRatio}% redução | ${result.processingTimeMs}ms`,
     );
     markCompressionComplete(podcastId, 'video');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[CAMPUS] Compressão de vídeo falhou para ${podcastId}: ${msg}`);
+    await failPodcastCompressionJob(podcastId);
   }
 };
 
@@ -165,22 +172,18 @@ const runAudioCompression = async (podcastId: string, inputPath: string): Promis
     });
     const compressedUrl = `/uploads/audio/compressed/${path.basename(result.outputPath)}`;
 
-    await updatePodcastCompression(
-      podcastId,
-      result.compressedSize,
-      result.compressionRatio,
-      compressedUrl,
-    );
+    await completePodcastAudioCompression(podcastId, result, compressedUrl);
 
     console.log(
       `[CAMPUS] Compressão concluída: ${podcastId} | ` +
-        `${result.originalSize} → ${result.compressedSize} bytes | ` +
-        `${result.compressionRatio}% redução`,
+      `${result.originalSize} → ${result.compressedSize} bytes | ` +
+      `${result.compressionRatio}% redução | ${result.processingTimeMs}ms`,
     );
     markCompressionComplete(podcastId, 'audio');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[CAMPUS] Compressão falhou para ${podcastId}: ${msg}`);
+    await failPodcastCompressionJob(podcastId);
   }
 };
 
@@ -264,6 +267,7 @@ export const deletePodcast = async (
   }
 
   clearCompressionProgress(id);
+  clearPodcastCompressionJobs(id);
 
   for (const urlField of [result.audio_url, result.video_url, result.cover_url]) {
     if (!urlField) continue;

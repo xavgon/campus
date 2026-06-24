@@ -45,5 +45,10 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)
   `);
 
+  await pool.query(`
+    ALTER TABLE podcasts
+    ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER
+  `);
+
   await ensureDefaultCategories();
 };
