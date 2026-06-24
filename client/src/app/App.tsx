@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AdminRoute } from '@/features/admin/components/AdminRoute';
 import { CreatorRoute } from '@/features/auth/components/CreatorRoute';
@@ -70,9 +70,11 @@ const AppRoutes = () => (
   </Routes>
 );
 
+const AppRouter = IS_ELECTRON ? HashRouter : BrowserRouter;
+
 const App = () => (
   <AuthProvider>
-    <BrowserRouter>
+    <AppRouter>
       {IS_ELECTRON ? (
         <ElectronShell>
           <AppRoutes />
@@ -80,7 +82,7 @@ const App = () => (
       ) : (
         <AppRoutes />
       )}
-    </BrowserRouter>
+    </AppRouter>
   </AuthProvider>
 );
 

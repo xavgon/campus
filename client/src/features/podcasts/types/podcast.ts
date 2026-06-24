@@ -10,6 +10,9 @@ export interface Podcast {
   categoryName: string;
   authorName: string;
   coverUrl?: string;
+  audioUrl?: string;
+  videoUrl?: string;
+  /** URL principal para preview na listagem (vídeo ou áudio). */
   mediaUrl?: string;
   mediaType?: 'audio' | 'video';
   durationSeconds: number;

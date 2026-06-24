@@ -35,16 +35,6 @@ export const LoginPage = () => {
   const [touched, setTouched] = useState({ email: false, password: false });
   const [forgotOpen, setForgotOpen] = useState(false);
 
-  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await login({ email: email.trim(), password });
-    if (rememberMe) {
-      localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
-    } else {
-      localStorage.removeItem(REMEMBER_EMAIL_KEY);
-    }
-    void navigate('/dashboard');
-  });
-
   // Hook must be called before any early return
   const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
     await login({ email: email.trim(), password });

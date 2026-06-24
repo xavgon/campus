@@ -78,7 +78,7 @@ export const PodcastDetailPage = () => {
     return (
       <div className="campus-page-enter space-y-6">
         <div className="h-8 w-48 animate-pulse bg-campus-border/40" />
-        <div className="campus-panel aspect-[16/9] max-w-3xl animate-pulse bg-campus-border/30" />
+        <div className="campus-panel aspect-video max-w-3xl animate-pulse bg-campus-border/30" />
         <div className="campus-panel h-40 max-w-3xl animate-pulse bg-campus-border/20" />
       </div>
     );

@@ -14,20 +14,27 @@ const deriveStatus = (api: PodcastApi): PodcastStatus => {
   return 'draft';
 };
 
-export const mapPodcastFromApi = (api: PodcastApi): Podcast => ({
-  id: api.id,
-  title: api.title,
-  description: api.description ?? '',
-  categoryId: api.category_id != null ? String(api.category_id) : '',
-  categoryName: api.category_name ?? 'Sem categoria',
-  authorName: api.author_nome,
-  coverUrl: resolveMediaUrl(api.cover_url),
-  audioUrl: resolveMediaUrl(api.audio_url),
-  videoUrl: resolveMediaUrl(api.video_url),
-  durationSeconds: 0,
-  status: deriveStatus(api),
-  createdAt: api.created_at,
-  originalSize: api.original_size ?? undefined,
-  compressedSize: api.compressed_size ?? undefined,
-  compressionRatio: api.compression_ratio ?? undefined,
-});
+export const mapPodcastFromApi = (api: PodcastApi): Podcast => {
+  const audioUrl = resolveMediaUrl(api.audio_url);
+  const videoUrl = resolveMediaUrl(api.video_url);
+
+  return {
+    id: api.id,
+    title: api.title,
+    description: api.description ?? '',
+    categoryId: api.category_id != null ? String(api.category_id) : '',
+    categoryName: api.category_name ?? 'Sem categoria',
+    authorName: api.author_nome,
+    coverUrl: resolveMediaUrl(api.cover_url),
+    audioUrl,
+    videoUrl,
+    mediaUrl: videoUrl ?? audioUrl,
+    mediaType: videoUrl ? 'video' : audioUrl ? 'audio' : undefined,
+    durationSeconds: 0,
+    status: deriveStatus(api),
+    createdAt: api.created_at,
+    originalSize: api.original_size ?? undefined,
+    compressedSize: api.compressed_size ?? undefined,
+    compressionRatio: api.compression_ratio ?? undefined,
+  };
+};

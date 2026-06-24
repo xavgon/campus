@@ -29,6 +29,7 @@ export const useLiveListener = (liveId: string | undefined) => {
   const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioScheduleRef = useRef({ next: 0 });
   const videoRendererRef = useRef<LiveVideoRenderer | null>(null);
 
   const attachViewerCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
@@ -85,6 +86,7 @@ export const useLiveListener = (liveId: string | undefined) => {
             setPhase('watching');
             if (wantsLiveAudio(msg.mediaType)) {
               audioCtxRef.current = createListenerAudioContext();
+              audioScheduleRef.current.next = 0;
               setNeedsAudioUnlock(audioCtxRef.current.state === 'suspended');
             }
           }
@@ -111,7 +113,7 @@ export const useLiveListener = (liveId: string | undefined) => {
       if (type === LIVE_TYPE_VIDEO) {
         videoRendererRef.current?.pushFrame(payload);
       } else if (type === LIVE_TYPE_AUDIO && audioCtxRef.current) {
-        playLiveAudioChunk(audioCtxRef.current, payload);
+        playLiveAudioChunk(audioCtxRef.current, payload, audioScheduleRef.current);
       }
     };
 

@@ -10,10 +10,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:dev": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://localhost:5173 && node ./scripts/launch-electron-dev.cjs\"",
+    "electron:clean": "node ./scripts/clean-electron-release.cjs",
     "electron:build": "npm run build && electron .",
-    "electron:pack": "npm run build && electron-builder --win",
-    "electron:dist": "npm run build && electron-builder --win --publish never"
+    "electron:pack": "npm run build && npm run electron:clean && electron-builder --win",
+    "electron:dist": "npm run build && npm run electron:clean && electron-builder --win --publish never"
   },
   "build": {
     "appId": "co.ao.campus.app",

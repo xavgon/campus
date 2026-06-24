@@ -4,10 +4,16 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
-const certKey = path.resolve(__dirname, 'certs/servidor.key');
-const certCrt = path.resolve(__dirname, 'certs/servidor.crt');
-const hasHttps = fs.existsSync(certKey) && fs.existsSync(certCrt);
-const apiTarget = hasHttps ? 'https://localhost:3001' : 'http://localhost:3001';
+const clientCertKey = path.resolve(__dirname, 'certs/servidor.key');
+const clientCertCrt = path.resolve(__dirname, 'certs/servidor.crt');
+const serverCertKey = path.resolve(__dirname, '../server/certs/servidor.key');
+const serverCertCrt = path.resolve(__dirname, '../server/certs/servidor.crt');
+
+/** HTTPS no browser (Vite) — opcional; certs em client/certs/ */
+const hasClientHttps = fs.existsSync(clientCertKey) && fs.existsSync(clientCertCrt);
+/** TLS da API — certs em server/certs/ (proxy tem de usar https:// se existirem) */
+const hasServerTls = fs.existsSync(serverCertKey) && fs.existsSync(serverCertCrt);
+const apiTarget = hasServerTls ? 'https://localhost:3001' : 'http://localhost:3001';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -18,16 +24,21 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    ...(hasHttps
+    ...(hasClientHttps
       ? {
           https: {
-            key: fs.readFileSync(certKey),
-            cert: fs.readFileSync(certCrt),
+            key: fs.readFileSync(clientCertKey),
+            cert: fs.readFileSync(clientCertCrt),
           },
         }
       : {}),
     proxy: {
       '/api': {
+        target: apiTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
         target: apiTarget,
         changeOrigin: true,
         secure: false,

@@ -10,7 +10,7 @@ import {
   PODCAST_CATEGORIES,
   PUBLISH_LIMITS,
 } from '@/features/podcasts/constants';
-import { createPodcast } from '@/features/podcasts/services/podcast.service';
+import { publishPodcast } from '@/features/podcasts/services/podcast.service';
 import {
   hasPublishErrors,
   validatePublishForm,
@@ -82,13 +82,17 @@ export const PublishPage = () => {
       const formData = new FormData();
       formData.append('title', title);
       if (description) formData.append('description', description);
-      if (categoryId) formData.append('category_id', categoryId);
+      if (categoryId && categoryId !== CATEGORY_OTHER_ID) {
+        formData.append('category_id', categoryId);
+      }
       if (audio) formData.append('audio', audio);
       if (video) formData.append('video', video);
       if (cover) formData.append('cover', cover);
 
       await publishPodcast(formData);
-      navigate('/podcasts');
+      navigate('/podcasts', {
+        state: { notice: 'Episódio publicado. A compressão pode demorar alguns minutos.' },
+      });
     } catch (err) {
       setSubmitError(getApiErrorMessage(err));
     } finally {

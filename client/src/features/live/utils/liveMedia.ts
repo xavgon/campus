@@ -61,22 +61,31 @@ export const startLiveCapture = async (
     let stopped = false;
     let encoding = false;
     let frameTimer: ReturnType<typeof setTimeout> | null = null;
+    let previewTick = 0;
+    let lastCaptureMs = 0;
     const frameIntervalMs = Math.round(1000 / LIVE_VIDEO_FPS);
 
     const captureFrame = () => {
       if (stopped) return;
 
       if (encoding) {
-        frameTimer = setTimeout(captureFrame, frameIntervalMs);
+        scheduleNextFrame();
         return;
       }
 
       if (videoEl.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-        frameTimer = setTimeout(captureFrame, frameIntervalMs);
+        scheduleNextFrame();
         return;
       }
 
-      if (previewCtx && previewCanvas) {
+      const now = performance.now();
+      if (now - lastCaptureMs < frameIntervalMs * 0.85) {
+        scheduleNextFrame();
+        return;
+      }
+      lastCaptureMs = now;
+
+      if (previewCtx && previewCanvas && previewTick++ % 4 === 0) {
         previewCtx.drawImage(videoEl, 0, 0, LIVE_VIDEO_WIDTH, LIVE_VIDEO_HEIGHT);
       }
       streamCtx.drawImage(videoEl, 0, 0, LIVE_VIDEO_STREAM_WIDTH, LIVE_VIDEO_STREAM_HEIGHT);
@@ -86,7 +95,7 @@ export const startLiveCapture = async (
         (blob) => {
           encoding = false;
           if (stopped || !blob) {
-            if (!stopped) frameTimer = setTimeout(captureFrame, frameIntervalMs);
+            if (!stopped) scheduleNextFrame();
             return;
           }
 
@@ -98,16 +107,24 @@ export const startLiveCapture = async (
             onChunk(out);
           });
 
-          if (!stopped) {
-            frameTimer = setTimeout(captureFrame, frameIntervalMs);
-          }
+          if (!stopped) scheduleNextFrame();
         },
         'image/jpeg',
         LIVE_JPEG_QUALITY,
       );
     };
 
-    frameTimer = setTimeout(captureFrame, frameIntervalMs);
+    const scheduleNextFrame = () => {
+      if (stopped) return;
+      if ('requestVideoFrameCallback' in videoEl) {
+        (videoEl as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
+          .requestVideoFrameCallback(() => captureFrame());
+        return;
+      }
+      frameTimer = setTimeout(captureFrame, frameIntervalMs);
+    };
+
+    scheduleNextFrame();
 
     clearVideoCapture = () => {
       stopped = true;
@@ -152,7 +169,11 @@ export const startLiveCapture = async (
 export const createListenerAudioContext = (): AudioContext =>
   new AudioContext({ sampleRate: LIVE_AUDIO_SAMPLE_RATE });
 
-export const playLiveAudioChunk = (audioContext: AudioContext, buffer: ArrayBuffer): void => {
+export const playLiveAudioChunk = (
+  audioContext: AudioContext,
+  buffer: ArrayBuffer,
+  schedule?: { next: number },
+): void => {
   const int16 = new Int16Array(buffer);
   const float32 = new Float32Array(int16.length);
   for (let i = 0; i < int16.length; i++) {
@@ -163,7 +184,15 @@ export const playLiveAudioChunk = (audioContext: AudioContext, buffer: ArrayBuff
   const source = audioContext.createBufferSource();
   source.buffer = audioBuf;
   source.connect(audioContext.destination);
-  source.start();
+
+  const duration = float32.length / LIVE_AUDIO_SAMPLE_RATE;
+  const now = audioContext.currentTime;
+  const startAt =
+    !schedule || schedule.next <= now ? now + 0.03 : schedule.next;
+  if (schedule) {
+    schedule.next = startAt + duration;
+  }
+  source.start(startAt);
 };
 
 export const formatLiveDuration = (startedAt: string): string => {

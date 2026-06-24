@@ -1,10 +1,31 @@
 import axios from 'axios';
 import type { ApiResponse } from '@/shared/types';
+import { IS_ELECTRON } from '@/shared/utils/isElectron';
 import { clearToken, getToken } from '@/shared/utils/storage';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+const isAbsoluteUrl = (url: string) => /^https?:\/\//i.test(url);
 
-export const SERVER_URL = API_BASE_URL.replace(/\/api$/, '');
+const resolveApiBaseUrl = (): string => {
+  const fromEnv = import.meta.env.VITE_API_URL as string | undefined;
+
+  if (import.meta.env.DEV) {
+    return fromEnv ?? '/api';
+  }
+
+  if (IS_ELECTRON) {
+    if (fromEnv && isAbsoluteUrl(fromEnv)) return fromEnv;
+    return 'https://localhost:3001/api';
+  }
+
+  return fromEnv ?? 'http://localhost:3001/api';
+};
+
+const API_BASE_URL = resolveApiBaseUrl();
+
+/** Origem para ficheiros estáticos (/uploads). Em dev com proxy, fica vazio (URLs relativas). */
+export const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL ??
+  (import.meta.env.DEV ? '' : API_BASE_URL.replace(/\/api$/, ''));
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -39,7 +60,7 @@ export const fetchHealth = async () => {
 export const getApiErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return 'Não foi possível ligar à API. Confirma que o servidor está a correr (porta 3001) e que VITE_API_URL está correcto.';
+      return 'Não foi possível ligar à API. Confirma que o servidor está a correr (cd server && npm run dev). Em dev usa VITE_API_URL=/api; com HTTPS directo usa https://localhost:3001/api.';
     }
     if (error.response.data?.message) {
       return String(error.response.data.message);
