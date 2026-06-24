@@ -4,6 +4,7 @@ import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { FileDropzone } from '@/features/podcasts/components/FileDropzone';
 import {
   AUDIO_ACCEPT,
+  VIDEO_ACCEPT,
   CATEGORY_OTHER_ID,
   COVER_ACCEPT,
   PODCAST_CATEGORIES,
@@ -31,6 +32,7 @@ export const PublishPage = () => {
   const [categoryId, setCategoryId] = useState('');
   const [categoryOther, setCategoryOther] = useState('');
   const [audio, setAudio] = useState<File | null>(null);
+  const [video, setVideo] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<PublishFormErrors>({});
@@ -68,6 +70,7 @@ export const PublishPage = () => {
       categoryId,
       categoryOther,
       audio,
+      video,
       cover,
     });
     setErrors(nextErrors);
@@ -76,16 +79,16 @@ export const PublishPage = () => {
 
     setIsSubmitting(true);
     try {
-      await createPodcast({
-        title,
-        description,
-        categoryId,
-        audio: audio!,
-        cover,
-      });
-      navigate('/podcasts', {
-        state: { notice: 'Episódio publicado. A compressão do áudio pode demorar alguns minutos.' },
-      });
+      const formData = new FormData();
+      formData.append('title', title);
+      if (description) formData.append('description', description);
+      if (categoryId) formData.append('category_id', categoryId);
+      if (audio) formData.append('audio', audio);
+      if (video) formData.append('video', video);
+      if (cover) formData.append('cover', cover);
+
+      await publishPodcast(formData);
+      navigate('/podcasts');
     } catch (err) {
       setSubmitError(getApiErrorMessage(err));
     } finally {
@@ -198,21 +201,35 @@ export const PublishPage = () => {
 
             <ProfileSection
               title="Ficheiros"
-              description="O áudio será comprimido automaticamente após o upload (Módulo 3)."
+              description="Carrega áudio ou vídeo. Ambos são comprimidos automaticamente após o upload."
             >
               <div className="grid gap-6 sm:grid-cols-2">
                 <FileDropzone
-                  label="Áudio"
+                  label="Áudio (MP3, WAV, M4A)"
                   hint={`MP3, WAV ou M4A · máx. ${PUBLISH_LIMITS.audioMaxMb} MB`}
                   accept={AUDIO_ACCEPT}
                   file={audio}
                   error={errors.audio}
                   onFileChange={(file) => {
                     setAudio(file);
+                    if (file) setVideo(null);
                     clearError('audio');
                   }}
                   emptyIcon="♪"
                 />
+                <FileDropzone
+                  label="Vídeo (MP4, WebM, MOV)"
+                  hint={`MP4, WebM ou MOV · máx. ${PUBLISH_LIMITS.audioMaxMb} MB · H.264/H.265/VP9`}
+                  accept={VIDEO_ACCEPT}
+                  file={video}
+                  onFileChange={(file) => {
+                    setVideo(file);
+                    if (file) setAudio(null);
+                  }}
+                  emptyIcon="▶"
+                />
+              </div>
+              <div className="mt-6">
                 <FileDropzone
                   label="Capa (opcional)"
                   hint={`JPG, PNG ou WebP · máx. ${PUBLISH_LIMITS.coverMaxMb} MB`}

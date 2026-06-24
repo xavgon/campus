@@ -6,12 +6,12 @@ import { AppError } from './errorHandler';
 
 // ─── Garantir que as pastas existem ──────────────────────────────────────────
 
-const audioDir = path.join(config.uploadDir, 'audio');
-const videosDir = path.join(config.uploadDir, 'videos');
+const audioDir  = path.join(config.uploadDir, 'audio');
 const coversDir = path.join(config.uploadDir, 'covers');
 const avatarsDir = path.join(config.uploadDir, 'avatars');
+const videoDir  = path.join(config.uploadDir, 'video');
 
-for (const dir of [audioDir, videosDir, coversDir, avatarsDir]) {
+for (const dir of [audioDir, coversDir, avatarsDir, videoDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
@@ -32,6 +32,13 @@ const VIDEO_MIME_TYPES = new Set([
   'video/webm',
   'video/mp4',
   'video/ogg',
+]);
+
+const VIDEO_MIME_TYPES = new Set([
+  'video/mp4',        // H.264 / H.265
+  'video/webm',       // VP9
+  'video/quicktime',  // MOV
+  'video/x-matroska', // MKV
 ]);
 
 const IMAGE_MIME_TYPES = new Set([
@@ -64,8 +71,8 @@ const storage = multer.diskStorage({
     const mime = normalizeMime(file.mimetype, file.fieldname, file.originalname);
     if (isAudioMime(mime)) {
       cb(null, audioDir);
-    } else if (isVideoMime(mime)) {
-      cb(null, videosDir);
+    } else if (VIDEO_MIME_TYPES.has(file.mimetype)) {
+      cb(null, videoDir);
     } else {
       cb(null, coversDir);
     }
@@ -86,11 +93,11 @@ const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
     cb(new AppError('Formato de áudio inválido. Use MP3, WAV, OGG, M4A, FLAC, AAC ou WebM.'));
     return;
   }
-  if (file.fieldname === 'video' && !isVideoMime(mime)) {
-    cb(new AppError('Formato de vídeo inválido. Use WebM ou MP4.'));
+  if (file.fieldname === 'video' && !VIDEO_MIME_TYPES.has(file.mimetype)) {
+    cb(new AppError('Formato de vídeo inválido. Use MP4, WebM, MOV ou MKV.'));
     return;
   }
-  if (file.fieldname === 'cover' && !IMAGE_MIME_TYPES.has(mime)) {
+  if (file.fieldname === 'cover' && !IMAGE_MIME_TYPES.has(file.mimetype)) {
     cb(new AppError('Formato de imagem inválido. Use JPG, PNG ou WebP.'));
     return;
   }
@@ -139,3 +146,5 @@ export const uploadPodcast = multer({
   { name: 'video', maxCount: 1 },
   { name: 'cover', maxCount: 1 },
 ]);
+
+export { VIDEO_MIME_TYPES };

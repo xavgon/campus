@@ -139,3 +139,81 @@ export const compressAudio = (inputPath: string): Promise<CompressionResult> => 
     });
   });
 };
+
+export type VideoCodec = 'h264' | 'h265' | 'vp9';
+
+/**
+ * Comprime um ficheiro de vídeo usando FFmpeg.
+ * Suporta três codecs: H.264 (libx264), H.265 (libx265), VP9 (libvpx-vp9).
+ * Guarda o resultado em uploads/video/compressed/.
+ */
+export const compressVideo = (
+  inputPath: string,
+  codec: VideoCodec = 'h264',
+): Promise<CompressionResult> => {
+  return new Promise((resolve, reject) => {
+    if (!fs.existsSync(inputPath)) {
+      reject(new Error(`Ficheiro não encontrado: ${inputPath}`));
+      return;
+    }
+
+    const originalSize = fs.statSync(inputPath).size;
+
+    const compressedDir = path.join(path.dirname(inputPath), 'compressed');
+    if (!fs.existsSync(compressedDir)) {
+      fs.mkdirSync(compressedDir, { recursive: true });
+    }
+
+    const baseName = path.basename(inputPath, path.extname(inputPath));
+
+    // VP9 usa WebM como contentor; H.264 e H.265 usam MP4
+    const ext = codec === 'vp9' ? '.webm' : '.mp4';
+    const outputPath = path.join(compressedDir, `${baseName}_${codec}${ext}`);
+
+    // Mapeamento codec → encoder FFmpeg e opções
+    // H.264  → libx264  | CRF 23 (boa qualidade, ficheiro menor)
+    // H.265  → libx265  | CRF 28 (melhor compressão que H.264)
+    // VP9    → libvpx-vp9| CRF 33, bitrate 0 (modo qualidade constante)
+    const codecArgs: Record<VideoCodec, string[]> = {
+      h264: ['-c:v', 'libx264',    '-crf', '23', '-preset', 'fast', '-c:a', 'aac',    '-b:a', '128k'],
+      h265: ['-c:v', 'libx265',    '-crf', '28', '-preset', 'fast', '-c:a', 'aac',    '-b:a', '128k'],
+      vp9:  ['-c:v', 'libvpx-vp9', '-crf', '33', '-b:v',    '0',   '-c:a', 'libopus', '-b:a', '128k'],
+    };
+
+    const args = [
+      '-y',
+      '-i', inputPath,
+      ...codecArgs[codec],
+      '-movflags', '+faststart', // permite streaming antes do download completo
+      outputPath,
+    ];
+
+    const proc = spawn(config.ffmpegPath, args);
+
+    let stderr = '';
+    proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`FFmpeg (${codec}) falhou (código ${code}): ${stderr.slice(-300)}`));
+        return;
+      }
+
+      if (!fs.existsSync(outputPath)) {
+        reject(new Error('FFmpeg terminou mas o ficheiro de saída não foi criado'));
+        return;
+      }
+
+      const compressedSize = fs.statSync(outputPath).size;
+      const compressionRatio = originalSize > 0
+        ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
+        : 0;
+
+      resolve({ outputPath, originalSize, compressedSize, compressionRatio });
+    });
+
+    proc.on('error', (err) => {
+      reject(new Error(`Erro ao iniciar FFmpeg: ${err.message}. Verifica FFMPEG_PATH no .env`));
+    });
+  });
+};

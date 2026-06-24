@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { compressAudio, compressImage } from '../compression/compress';
-import { extractAudioFromVideo } from '../compression/extractAudio';
+import { compressAudio, compressImage, compressVideo } from '../compression/compress';
 import { AppError } from '../middleware/errorHandler';
 import {
   deletePodcastAndReturnPath,
@@ -37,30 +36,11 @@ export const createPodcast = async (
     throw new AppError('Ficheiro de áudio ou vídeo é obrigatório', 400);
   }
 
-  let audio_url: string | null = null;
-  let video_url: string | null = null;
-  let original_size = 0;
-  let audioPhysicalPath: string | null = null;
-
-  if (files.video) {
-    video_url = `/uploads/videos/${files.video.filename}`;
-    original_size += files.video.size;
-  }
-
-  if (files.audio) {
-    audio_url = `/uploads/audio/${files.audio.filename}`;
-    original_size += files.audio.size;
-    audioPhysicalPath = path.join(process.cwd(), audio_url);
-  } else if (files.video) {
-    const videoPath = path.join(process.cwd(), video_url!);
-    const extractedPath = await extractAudioFromVideo(videoPath);
-    const extractedName = path.basename(extractedPath);
-    audio_url = `/uploads/audio/${extractedName}`;
-    audioPhysicalPath = extractedPath;
-    original_size += fs.statSync(extractedPath).size;
-  }
-
+  const mediaFile = files.audio ?? files.video!;
+  const mediaFolder = files.audio ? 'audio' : 'video';
+  const audio_url = `/uploads/${mediaFolder}/${mediaFile.filename}`;
   const cover_url = files.cover ? `/uploads/covers/${files.cover.filename}` : null;
+  const original_size = mediaFile.size;
 
   const podcast = await insertPodcast({
     title: input.title,
@@ -73,8 +53,13 @@ export const createPodcast = async (
     user_id: userId,
   });
 
-  if (audioPhysicalPath) {
-    void runAudioCompression(podcast.id, audioPhysicalPath);
+  // Compressão assíncrona — não bloqueia a resposta HTTP
+  const physicalMediaPath = path.join(process.cwd(), audio_url);
+  if (files.audio) {
+    void runAudioCompression(podcast.id, physicalMediaPath);
+  } else if (files.video) {
+    // Comprime com H.264 por defeito (melhor compatibilidade)
+    void runVideoCompression(podcast.id, physicalMediaPath, 'h264');
   }
 
   if (files.cover) {
@@ -97,6 +82,31 @@ const runImageCompression = async (label: string, inputPath: string): Promise<vo
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[CAMPUS] Compressão de imagem falhou (${label}): ${msg}`);
+  }
+};
+
+const runVideoCompression = async (
+  podcastId: string,
+  inputPath: string,
+  codec: 'h264' | 'h265' | 'vp9',
+): Promise<void> => {
+  try {
+    console.log(`[CAMPUS] Compressão de vídeo iniciada (${codec}): ${podcastId}`);
+    const result = await compressVideo(inputPath, codec);
+
+    const ext = codec === 'vp9' ? '.webm' : '.mp4';
+    const compressedUrl = `/uploads/video/compressed/${path.basename(result.outputPath, path.extname(result.outputPath))}${ext}`;
+
+    await updatePodcastCompression(podcastId, result.compressedSize, result.compressionRatio, compressedUrl);
+
+    console.log(
+      `[CAMPUS] Vídeo comprimido (${codec}): ${podcastId} | ` +
+      `${result.originalSize} → ${result.compressedSize} bytes | ` +
+      `${result.compressionRatio}% redução`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[CAMPUS] Compressão de vídeo falhou para ${podcastId}: ${msg}`);
   }
 };
 

@@ -10,8 +10,8 @@ export interface Podcast {
   categoryName: string;
   authorName: string;
   coverUrl?: string;
-  audioUrl?: string;
-  videoUrl?: string;
+  mediaUrl?: string;
+  mediaType?: 'audio' | 'video';
   durationSeconds: number;
   status: PodcastStatus;
   createdAt: string;

@@ -3,8 +3,24 @@ import { fetchPodcasts } from '@/features/podcasts/services/podcast.service';
 import type { Podcast, PodcastLibraryFilters, PodcastSort } from '@/features/podcasts/types/podcast';
 import { computePodcastStats } from '@/features/podcasts/utils/computePodcastStats';
 import { filterAndSortPodcasts } from '@/features/podcasts/utils/filterPodcasts';
-import { getApiErrorMessage } from '@/shared/api/client';
-import { useDebounce } from '@/shared/hooks/useDebounce';
+import { SERVER_URL } from '@/shared/api/client';
+
+const mapApiPodcast = (p: ApiPodcast): Podcast => {
+  const isVideo = p.audio_url?.includes('/uploads/video/');
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description ?? '',
+    categoryId: String(p.category_id ?? ''),
+    categoryName: p.category_name ?? 'Sem categoria',
+    coverUrl: p.cover_url ? `${SERVER_URL}${p.cover_url}` : undefined,
+    mediaUrl: p.audio_url ? `${SERVER_URL}${p.audio_url}` : undefined,
+    mediaType: isVideo ? 'video' : 'audio',
+    durationSeconds: 0,
+    status: p.compressed_size ? 'published' : 'processing',
+    createdAt: p.created_at,
+  };
+};
 
 const DEFAULT_FILTERS: PodcastLibraryFilters = {
   search: '',
