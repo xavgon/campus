@@ -4,18 +4,34 @@ import { getActiveSessions } from '../live/live.gateway';
 import { getCompletedRecordings, getRecordingById } from '../live/live.recorder';
 import { AppError } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth.middleware';
+import { requireCreator } from '../middleware/requireCreator';
 import { asyncHandler } from '../middleware/asyncHandler';
+import { listScheduledStreamsForHost } from '../models/stream.model';
 import { sendSuccess } from '../utils/apiResponse';
 
 export const liveRouter = Router();
 
-// GET /api/live — lives activas
+// GET /api/live — transmissões activas (BD + ouvintes WS em memória)
 liveRouter.get(
   '/',
   requireAuth,
   asyncHandler(async (_req: Request, res: Response) => {
-    const sessions = getActiveSessions();
+    const sessions = await getActiveSessions();
     sendSuccess(res, { sessions, total: sessions.length });
+  }),
+);
+
+// GET /api/live/scheduled — transmissões agendadas do criador actual
+liveRouter.get(
+  '/scheduled',
+  requireAuth,
+  requireCreator,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('Autenticação necessária', 401);
+
+    const streams = await listScheduledStreamsForHost(userId);
+    sendSuccess(res, { streams, total: streams.length });
   }),
 );
 

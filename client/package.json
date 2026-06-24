@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "CAMPUS — cliente desktop (React + Electron)",
+  "author": "CAMPUS",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
@@ -11,23 +12,31 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://localhost:5173 && node ./scripts/launch-electron-dev.cjs\"",
+    "electron:defender": "node ./scripts/add-defender-exclusion.cjs",
     "electron:clean": "node ./scripts/clean-electron-release.cjs",
+    "electron:portable": "npm run build && node ./scripts/electron-pack-manual.cjs",
     "electron:build": "npm run build && electron .",
-    "electron:pack": "npm run build && npm run electron:clean && electron-builder --win",
-    "electron:dist": "npm run build && npm run electron:clean && electron-builder --win --publish never"
+    "electron:pack": "npm run build && node ./scripts/electron-dist.cjs --dir",
+    "electron:dist": "npm run build && node ./scripts/electron-dist.cjs"
   },
   "build": {
     "appId": "co.ao.campus.app",
     "productName": "CAMPUS",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build-resources"
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "!electron/icon.png"
     ],
+    "electronDownload": {
+      "cache": ".electron-cache"
+    },
     "win": {
-      "target": ["nsis"]
+      "target": ["nsis"],
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

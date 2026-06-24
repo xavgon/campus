@@ -31,6 +31,9 @@ server/uploads/*
 
 # Electron
 client/dist/
+client/release/
+client/electron-dist/
+client/release2/
 out/
 
 # Coverage / test

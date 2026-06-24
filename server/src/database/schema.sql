@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS streams (
   scheduled_at TIMESTAMPTZ,
   started_at TIMESTAMPTZ,
   ended_at TIMESTAMPTZ,
+  media_type VARCHAR(20),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

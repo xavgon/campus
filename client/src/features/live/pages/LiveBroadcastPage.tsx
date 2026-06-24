@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LIVE_MEDIA_OPTIONS, LIVE_VIDEO_HEIGHT, LIVE_VIDEO_WIDTH } from '@/features/live/constants';
 import { SaveLiveEpisodePanel } from '@/features/live/components/SaveLiveEpisodePanel';
 import { useLiveBroadcast } from '@/features/live/hooks/useLiveBroadcast';
+import { useScheduledStreams } from '@/features/live/hooks/useScheduledStreams';
 import type { LiveMediaType } from '@/features/live/types/live.types';
 import { wantsLiveVideo } from '@/features/live/utils/liveMedia';
 import { Alert } from '@/shared/components/campus/Alert';
@@ -14,6 +15,8 @@ import { Button } from '@/shared/components/ui/Button';
 export const LiveBroadcastPage = () => {
   const [title, setTitle] = useState('');
   const [mediaType, setMediaType] = useState<LiveMediaType>('audio');
+  const [scheduledId, setScheduledId] = useState('');
+  const { streams: scheduledStreams } = useScheduledStreams();
   const {
     phase,
     liveId,
@@ -34,10 +37,16 @@ export const LiveBroadcastPage = () => {
 
   const showPreview = wantsLiveVideo(mediaType) && (isOnAir || showSavePanel);
 
+  useEffect(() => {
+    if (!scheduledId) return;
+    const picked = scheduledStreams.find((s) => s.id === scheduledId);
+    if (picked) setTitle(picked.title);
+  }, [scheduledId, scheduledStreams]);
+
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     if (!title.trim() || isOnAir) return;
-    void start(title, mediaType);
+    void start(title, mediaType, scheduledId || undefined);
   };
 
   const onStop = () => {
@@ -83,6 +92,33 @@ export const LiveBroadcastPage = () => {
         />
       ) : showStartForm ? (
         <form onSubmit={onSubmit} className="campus-panel space-y-5 p-6">
+          {scheduledStreams.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="scheduledStream" className="text-sm font-medium text-campus-foreground">
+                Transmissão agendada (opcional)
+              </label>
+              <select
+                id="scheduledStream"
+                className="w-full rounded-none border border-campus-border bg-campus-surface-elevated px-4 py-3 text-sm text-campus-foreground outline-none focus:border-campus-primary focus:ring-2 focus:ring-campus-primary/30"
+                value={scheduledId}
+                onChange={(e) => setScheduledId(e.target.value)}
+              >
+                <option value="">Nova transmissão espontânea</option>
+                {scheduledStreams.map((stream) => (
+                  <option key={stream.id} value={stream.id}>
+                    {stream.title}
+                    {stream.scheduled_at
+                      ? ` — ${new Date(stream.scheduled_at).toLocaleString('pt-PT')}`
+                      : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-campus-muted">
+                Escolhe uma transmissão criada no painel admin para a activar em direto.
+              </p>
+            </div>
+          )}
+
           <Field
             label="Título da transmissão"
             name="liveTitle"

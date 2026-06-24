@@ -2,6 +2,11 @@ export type PodcastStatus = 'published' | 'processing' | 'draft';
 
 export type PodcastSort = 'newest' | 'oldest' | 'title-asc' | 'title-desc';
 
+export interface PodcastCategory {
+  id: string;
+  name: string;
+}
+
 export interface Podcast {
   id: string;
   title: string;
@@ -9,6 +14,7 @@ export interface Podcast {
   categoryId: string;
   categoryName: string;
   authorName: string;
+  authorId: string;
   coverUrl?: string;
   audioUrl?: string;
   videoUrl?: string;

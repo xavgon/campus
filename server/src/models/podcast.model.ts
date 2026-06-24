@@ -122,13 +122,15 @@ export const updatePodcastCompression = async (
   id: string,
   compressedSize: number,
   compressionRatio: number,
-  compressedAudioUrl: string,
+  compressedMediaUrl: string,
+  media: 'audio' | 'video' = 'audio',
 ): Promise<void> => {
+  const column = media === 'video' ? 'video_url' : 'audio_url';
   await getPool().query(
     `UPDATE podcasts
-     SET compressed_size = $1, compression_ratio = $2, audio_url = $3
+     SET compressed_size = $1, compression_ratio = $2, ${column} = $3
      WHERE id = $4`,
-    [compressedSize, compressionRatio, compressedAudioUrl, id],
+    [compressedSize, compressionRatio, compressedMediaUrl, id],
   );
 };
 

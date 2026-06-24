@@ -3,12 +3,18 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { config } from '../config';
+import { ffmpegProgressPercent } from './ffmpegProgress';
+import { getMediaDurationSeconds } from './ffprobe';
 
 export interface CompressionResult {
   outputPath: string;
   originalSize: number;
   compressedSize: number;
   compressionRatio: number;
+}
+
+export interface CompressMediaOptions {
+  onProgress?: (percent: number) => void;
 }
 
 /**
@@ -71,7 +77,12 @@ export const compressImage = async (inputPath: string): Promise<CompressionResul
  * Guarda o resultado em uploads/audio/compressed/.
  * Retorna os tamanhos e rácio de compressão.
  */
-export const compressAudio = (inputPath: string): Promise<CompressionResult> => {
+export const compressAudio = async (
+  inputPath: string,
+  options?: CompressMediaOptions,
+): Promise<CompressionResult> => {
+  const durationSeconds = await getMediaDurationSeconds(inputPath);
+
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(inputPath)) {
       reject(new Error(`Ficheiro não encontrado: ${inputPath}`));
@@ -112,7 +123,12 @@ export const compressAudio = (inputPath: string): Promise<CompressionResult> => 
 
     let stderr = '';
     proc.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
+      const chunk = data.toString();
+      stderr += chunk;
+      if (durationSeconds && options?.onProgress) {
+        const percent = ffmpegProgressPercent(chunk, durationSeconds);
+        if (percent != null) options.onProgress(percent);
+      }
     });
 
     proc.on('close', (code) => {
@@ -147,10 +163,13 @@ export type VideoCodec = 'h264' | 'h265' | 'vp9';
  * Suporta três codecs: H.264 (libx264), H.265 (libx265), VP9 (libvpx-vp9).
  * Guarda o resultado em uploads/video/compressed/.
  */
-export const compressVideo = (
+export const compressVideo = async (
   inputPath: string,
   codec: VideoCodec = 'h264',
+  options?: CompressMediaOptions,
 ): Promise<CompressionResult> => {
+  const durationSeconds = await getMediaDurationSeconds(inputPath);
+
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(inputPath)) {
       reject(new Error(`Ficheiro não encontrado: ${inputPath}`));
@@ -191,7 +210,14 @@ export const compressVideo = (
     const proc = spawn(config.ffmpegPath, args);
 
     let stderr = '';
-    proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
+    proc.stderr.on('data', (data: Buffer) => {
+      const chunk = data.toString();
+      stderr += chunk;
+      if (durationSeconds && options?.onProgress) {
+        const percent = ffmpegProgressPercent(chunk, durationSeconds);
+        if (percent != null) options.onProgress(percent);
+      }
+    });
 
     proc.on('close', (code) => {
       if (code !== 0) {

@@ -15,8 +15,17 @@ const hasClientHttps = fs.existsSync(clientCertKey) && fs.existsSync(clientCertC
 const hasServerTls = fs.existsSync(serverCertKey) && fs.existsSync(serverCertCrt);
 const apiTarget = hasServerTls ? 'https://localhost:3001' : 'http://localhost:3001';
 
+/** Vite injecta crossorigin nos assets; com file:// no Electron o bundle não carrega. */
+const stripCrossoriginForElectron = {
+  name: 'strip-crossorigin-for-electron',
+  apply: 'build' as const,
+  transformIndexHtml(html: string) {
+    return html.replace(/\s+crossorigin/g, '');
+  },
+};
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), stripCrossoriginForElectron],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

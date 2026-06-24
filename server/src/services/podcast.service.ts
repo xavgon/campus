@@ -1,16 +1,26 @@
 import fs from 'fs';
 import path from 'path';
 import { compressAudio, compressImage, compressVideo } from '../compression/compress';
+import { extractAudioFromVideo } from '../compression/extractAudio';
+import {
+  clearCompressionProgress,
+  initCompressionProgress,
+  markCompressionComplete,
+  readCompressionProgress,
+  setCompressionProgress,
+  type PodcastCompressionProgress,
+} from '../compression/progressStore';
 import { AppError } from '../middleware/errorHandler';
 import {
   deletePodcastAndReturnPath,
   findPodcastById,
   insertPodcast,
   listPodcasts,
+  updatePodcastById,
   updatePodcastCompression,
   type Podcast,
 } from '../models/podcast.model';
-import type { CreatePodcastInput } from '../validations/podcast.validation';
+import type { CreatePodcastInput, UpdatePodcastInput } from '../validations/podcast.validation';
 
 export const getPodcasts = async (opts?: {
   search?: string;
@@ -21,6 +31,13 @@ export const getPodcastById = async (id: string): Promise<Podcast> => {
   const podcast = await findPodcastById(id);
   if (!podcast) throw new AppError('Podcast não encontrado', 404);
   return podcast;
+};
+
+export const getPodcastCompressionProgress = async (
+  id: string,
+): Promise<PodcastCompressionProgress | null> => {
+  await getPodcastById(id);
+  return readCompressionProgress(id);
 };
 
 export const createPodcast = async (
@@ -36,11 +53,31 @@ export const createPodcast = async (
     throw new AppError('Ficheiro de áudio ou vídeo é obrigatório', 400);
   }
 
-  const mediaFile = files.audio ?? files.video!;
-  const mediaFolder = files.audio ? 'audio' : 'video';
-  const audio_url = `/uploads/${mediaFolder}/${mediaFile.filename}`;
+  let audio_url: string | null = null;
+  let video_url: string | null = null;
+  let original_size = 0;
+  let audioPhysicalPath: string | null = null;
+  let videoPhysicalPath: string | null = null;
+
+  if (files.video) {
+    video_url = `/uploads/video/${files.video.filename}`;
+    original_size += files.video.size;
+    videoPhysicalPath = path.join(process.cwd(), video_url);
+  }
+
+  if (files.audio) {
+    audio_url = `/uploads/audio/${files.audio.filename}`;
+    original_size += files.audio.size;
+    audioPhysicalPath = path.join(process.cwd(), audio_url);
+  } else if (files.video) {
+    const extractedPath = await extractAudioFromVideo(videoPhysicalPath!);
+    const extractedName = path.basename(extractedPath);
+    audio_url = `/uploads/audio/${extractedName}`;
+    audioPhysicalPath = extractedPath;
+    original_size += fs.statSync(extractedPath).size;
+  }
+
   const cover_url = files.cover ? `/uploads/covers/${files.cover.filename}` : null;
-  const original_size = mediaFile.size;
 
   const podcast = await insertPodcast({
     title: input.title,
@@ -53,13 +90,12 @@ export const createPodcast = async (
     user_id: userId,
   });
 
-  // Compressão assíncrona — não bloqueia a resposta HTTP
-  const physicalMediaPath = path.join(process.cwd(), audio_url);
-  if (files.audio) {
-    void runAudioCompression(podcast.id, physicalMediaPath);
-  } else if (files.video) {
-    // Comprime com H.264 por defeito (melhor compatibilidade)
-    void runVideoCompression(podcast.id, physicalMediaPath, 'h264');
+  if (audioPhysicalPath) {
+    void runAudioCompression(podcast.id, audioPhysicalPath);
+  }
+
+  if (videoPhysicalPath) {
+    void runVideoCompression(podcast.id, videoPhysicalPath, 'h264');
   }
 
   if (files.cover) {
@@ -90,20 +126,30 @@ const runVideoCompression = async (
   inputPath: string,
   codec: 'h264' | 'h265' | 'vp9',
 ): Promise<void> => {
+  initCompressionProgress(podcastId, 'video');
   try {
     console.log(`[CAMPUS] Compressão de vídeo iniciada (${codec}): ${podcastId}`);
-    const result = await compressVideo(inputPath, codec);
+    const result = await compressVideo(inputPath, codec, {
+      onProgress: (percent) => setCompressionProgress(podcastId, 'video', percent),
+    });
 
     const ext = codec === 'vp9' ? '.webm' : '.mp4';
     const compressedUrl = `/uploads/video/compressed/${path.basename(result.outputPath, path.extname(result.outputPath))}${ext}`;
 
-    await updatePodcastCompression(podcastId, result.compressedSize, result.compressionRatio, compressedUrl);
+    await updatePodcastCompression(
+      podcastId,
+      result.compressedSize,
+      result.compressionRatio,
+      compressedUrl,
+      'video',
+    );
 
     console.log(
       `[CAMPUS] Vídeo comprimido (${codec}): ${podcastId} | ` +
       `${result.originalSize} → ${result.compressedSize} bytes | ` +
       `${result.compressionRatio}% redução`,
     );
+    markCompressionComplete(podcastId, 'video');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[CAMPUS] Compressão de vídeo falhou para ${podcastId}: ${msg}`);
@@ -111,9 +157,12 @@ const runVideoCompression = async (
 };
 
 const runAudioCompression = async (podcastId: string, inputPath: string): Promise<void> => {
+  initCompressionProgress(podcastId, 'audio');
   try {
     console.log(`[CAMPUS] Compressão iniciada: ${podcastId}`);
-    const result = await compressAudio(inputPath);
+    const result = await compressAudio(inputPath, {
+      onProgress: (percent) => setCompressionProgress(podcastId, 'audio', percent),
+    });
     const compressedUrl = `/uploads/audio/compressed/${path.basename(result.outputPath)}`;
 
     await updatePodcastCompression(
@@ -128,6 +177,7 @@ const runAudioCompression = async (podcastId: string, inputPath: string): Promis
         `${result.originalSize} → ${result.compressedSize} bytes | ` +
         `${result.compressionRatio}% redução`,
     );
+    markCompressionComplete(podcastId, 'audio');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[CAMPUS] Compressão falhou para ${podcastId}: ${msg}`);
@@ -182,6 +232,26 @@ export const getPodcastDownload = async (id: string): Promise<PodcastDownloadInf
   };
 };
 
+export const updatePodcast = async (
+  id: string,
+  userId: string,
+  isAdmin: boolean,
+  input: UpdatePodcastInput,
+): Promise<Podcast> => {
+  const existing = await findPodcastById(id);
+  if (!existing) throw new AppError('Podcast não encontrado', 404);
+  if (!isAdmin && existing.user_id !== userId) {
+    throw new AppError('Sem permissão para editar este podcast', 403);
+  }
+
+  const updated = await updatePodcastById(id, input);
+  if (!updated) throw new AppError('Nada para actualizar', 400);
+
+  const podcast = await findPodcastById(id);
+  if (!podcast) throw new AppError('Podcast não encontrado', 404);
+  return podcast;
+};
+
 export const deletePodcast = async (
   id: string,
   userId: string,
@@ -192,6 +262,8 @@ export const deletePodcast = async (
   if (!result) {
     throw new AppError('Podcast não encontrado ou sem permissão para eliminar', 404);
   }
+
+  clearCompressionProgress(id);
 
   for (const urlField of [result.audio_url, result.video_url, result.cover_url]) {
     if (!urlField) continue;

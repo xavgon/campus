@@ -7,9 +7,9 @@ import {
   VIDEO_ACCEPT,
   CATEGORY_OTHER_ID,
   COVER_ACCEPT,
-  PODCAST_CATEGORIES,
   PUBLISH_LIMITS,
 } from '@/features/podcasts/constants';
+import { usePodcastCategories } from '@/features/podcasts/hooks/usePodcastCategories';
 import { publishPodcast } from '@/features/podcasts/services/podcast.service';
 import {
   hasPublishErrors,
@@ -27,6 +27,7 @@ import { Button } from '@/shared/components/ui/Button';
 
 export const PublishPage = () => {
   const navigate = useNavigate();
+  const { categories, isLoading: categoriesLoading, error: categoriesError } = usePodcastCategories();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
@@ -110,6 +111,9 @@ export const PublishPage = () => {
 
       <form className="space-y-6" onSubmit={onSubmit} noValidate>
         {submitError && <Alert title="Erro ao publicar" message={submitError} />}
+        {categoriesError && (
+          <Alert title="Categorias indisponíveis" message={categoriesError} />
+        )}
         {notice && (
           <ProfileNotice title="Quase lá" message={notice} variant="success" />
         )}
@@ -164,6 +168,7 @@ export const PublishPage = () => {
                         clearError('categoryOther');
                       }
                     }}
+                    disabled={categoriesLoading}
                     aria-invalid={errors.categoryId ? true : undefined}
                     className={`w-full rounded-none border bg-campus-surface-elevated px-4 py-3 text-sm text-campus-foreground outline-none transition focus:ring-2 focus:ring-campus-primary/30 ${
                       errors.categoryId
@@ -171,8 +176,10 @@ export const PublishPage = () => {
                         : 'border-campus-border focus:border-campus-primary'
                     }`}
                   >
-                    <option value="">Seleccionar categoria…</option>
-                    {PODCAST_CATEGORIES.map((cat) => (
+                    <option value="">
+                      {categoriesLoading ? 'A carregar categorias…' : 'Seleccionar categoria…'}
+                    </option>
+                    {categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>
                         {cat.name}
                       </option>
@@ -259,7 +266,7 @@ export const PublishPage = () => {
               <ul className="mt-4 space-y-3 text-sm leading-relaxed text-campus-accent">
                 <li>Usa áudio nítido e sem ruído de fundo excessivo.</li>
                 <li>A capa quadrada ou 16:9 destaca melhor no catálogo.</li>
-                <li>Após publicar, podes editar metadados na lista de podcasts.</li>
+                <li>Após publicar, abre o episódio na biblioteca para editar ou eliminar.</li>
               </ul>
             </div>
 

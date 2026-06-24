@@ -2,12 +2,21 @@ const { app, BrowserWindow, shell, ipcMain, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { configureWindowMenu } = require('./menu.cjs');
+const {
+  registerCampusScheme,
+  installCampusProtocol,
+  campusAppUrl,
+  resolveDistRoot,
+} = require('./protocol.cjs');
+
+registerCampusScheme();
 
 const isDev = !app.isPackaged;
 const useViteDev = isDev && process.env.ELECTRON_VITE_DEV === '1';
 const DEV_URL = 'http://localhost:5173';
 const preloadPath = path.join(__dirname, 'preload.cjs');
-const distIndexPath = path.join(__dirname, '../dist/index.html');
+const distIndexPath = path.join(resolveDistRoot(), 'index.html');
+const debugDesktop = process.env.CAMPUS_DEBUG === '1';
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
@@ -42,7 +51,7 @@ const attachDesktopGuards = (win) => {
 
   win.webContents.on('will-navigate', (event, url) => {
     if (useViteDev && url.startsWith(DEV_URL)) return;
-    if (!useViteDev && url.startsWith('file://')) return;
+    if (!useViteDev && (url.startsWith('campus://') || url.startsWith('file://'))) return;
     event.preventDefault();
   });
 };
@@ -63,7 +72,7 @@ const createWindow = () => {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      devTools: useViteDev,
+      devTools: useViteDev || debugDesktop,
       // Timers de captura de vídeo/áudio não podem ser limitados em segundo plano
       backgroundThrottling: false,
     },
@@ -75,15 +84,32 @@ const createWindow = () => {
   mainWindow.on('maximize', notifyMaximizedState);
   mainWindow.on('unmaximize', notifyMaximizedState);
 
+  const revealWindow = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+  };
+
+  const showFallbackTimer = setTimeout(() => {
+    console.warn('[CAMPUS] ready-to-show em atraso — a mostrar janela.');
+    revealWindow();
+  }, 4000);
+
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
-    mainWindow?.focus();
+    clearTimeout(showFallbackTimer);
+    revealWindow();
+  });
+
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) {
+      console.error('[CAMPUS renderer]', message, sourceId ? `(${sourceId}:${line})` : '');
+    }
   });
 
   mainWindow.webContents.on('did-fail-load', (_event, code, description, url) => {
     console.error('[CAMPUS] Falha ao carregar:', code, description, url);
-    mainWindow?.show();
-    if (useViteDev) mainWindow?.webContents.openDevTools({ mode: 'detach' });
+    revealWindow();
+    if (useViteDev || debugDesktop) mainWindow?.webContents.openDevTools({ mode: 'detach' });
   });
 
   const loadApp = () => {
@@ -91,7 +117,7 @@ const createWindow = () => {
       return mainWindow.loadURL(`${DEV_URL}/#/login`);
     }
     if (fs.existsSync(distIndexPath)) {
-      return mainWindow.loadFile(distIndexPath, { hash: '/login' });
+      return mainWindow.loadURL(campusAppUrl('/login'));
     }
     console.error(
       '[CAMPUS] dist/ em falta. Corre npm run build ou usa npm run electron:dev (com Vite).',
@@ -122,7 +148,11 @@ if (!gotSingleInstanceLock) {
     mainWindow.focus();
   });
 
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    if (!useViteDev) {
+      await installCampusProtocol();
+    }
+
     session.defaultSession.setCertificateVerifyProc((request, callback) => {
       const host = request.hostname ?? '';
       if (host === 'localhost' || host === '127.0.0.1') {

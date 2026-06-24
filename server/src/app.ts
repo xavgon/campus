@@ -14,6 +14,7 @@ import { attachLiveGateway } from './live/live.gateway';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
 import { authRouter } from './routes/auth.routes';
+import { categoriesRouter } from './routes/categories.routes';
 import { healthRouter } from './routes/health.routes';
 import { adminRouter } from './routes/admin.routes';
 import { presenceRouter } from './routes/presence.routes';
@@ -51,6 +52,7 @@ if (config.nodeEnv !== 'production') {
 
 app.use('/api/health', healthRouter);
 app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/categories', categoriesRouter);
 app.use('/api/presence', presenceRouter);
 app.use('/api/podcasts', podcastRouter);
 app.use('/api/stream', streamRouter);
@@ -84,6 +86,12 @@ httpServer.listen(config.port, () => {
   console.log(`[CAMPUS] API em ${scheme}://localhost:${config.port}`);
   if (!hasTls && config.nodeEnv !== 'production') {
     console.warn('[CAMPUS] Certificados TLS não encontrados — a correr em HTTP (dev).');
+  }
+
+  if (config.smtp.enabled) {
+    console.log(`[CAMPUS] SMTP activo (${config.smtp.host}:${config.smtp.port})`);
+  } else if (config.nodeEnv !== 'production') {
+    console.warn('[CAMPUS] SMTP não configurado — links de reset aparecem no log do servidor.');
   }
 
   if (config.nodeEnv !== 'production' && config.databaseUrl) {

@@ -1,6 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PODCAST_CATEGORIES } from '@/features/podcasts/constants';
+import { usePodcastCategories } from '@/features/podcasts/hooks/usePodcastCategories';
 import { createPodcastFromLive } from '@/features/live/services/liveEpisode.service';
 import type { LiveRecordingResult } from '@/features/live/utils/liveMedia';
 import {
@@ -30,15 +30,22 @@ export const SaveLiveEpisodePanel = ({
   onDiscard,
 }: SaveLiveEpisodePanelProps) => {
   const navigate = useNavigate();
+  const { categories, isLoading: categoriesLoading } = usePodcastCategories();
   const hasVideo = recordingHasVideo(recording);
   const hasAudio = recordingHasAudio(recording);
 
   const [title, setTitle] = useState(defaultTitle);
   const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState<string>(PODCAST_CATEGORIES[0]?.id ?? '1');
+  const [categoryId, setCategoryId] = useState('');
   const [format, setFormat] = useState<LiveEpisodeFormat>(hasVideo ? 'audiovideo' : 'audio');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!categoryId && categories[0]) {
+      setCategoryId(categories[0].id);
+    }
+  }, [categories, categoryId]);
 
   const durationLabel = startedAtMs ? formatRecordingDuration(startedAtMs) : '—';
   const audioSize = recording.audioBlob?.size ?? 0;
@@ -163,8 +170,10 @@ export const SaveLiveEpisodePanel = ({
           className="w-full rounded-none border border-campus-border bg-campus-surface-elevated px-4 py-3 text-sm text-campus-foreground outline-none focus:border-campus-primary focus:ring-2 focus:ring-campus-primary/30"
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
+          disabled={categoriesLoading}
         >
-          {PODCAST_CATEGORIES.map((cat) => (
+          {categoriesLoading && <option value="">A carregar…</option>}
+          {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.name}
             </option>

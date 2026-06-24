@@ -1,6 +1,7 @@
 import { CATEGORY_OTHER_ID } from '@/features/podcasts/constants';
+import type { CompressionProgress } from '@/features/podcasts/types/compression';
 import type { PodcastApi } from '@/features/podcasts/types/podcast.api';
-import type { Podcast } from '@/features/podcasts/types/podcast';
+import type { Podcast, PodcastCategory } from '@/features/podcasts/types/podcast';
 import { mapPodcastFromApi } from '@/features/podcasts/utils/mapPodcast';
 import { api } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types';
@@ -20,6 +21,16 @@ export interface CreatePodcastInput {
   cover?: File | null;
 }
 
+export const fetchPodcastCategories = async (): Promise<PodcastCategory[]> => {
+  const { data } = await api.get<ApiResponse<{ categories: { id: number; name: string }[] }>>(
+    '/categories',
+  );
+  return data.data.categories.map((cat) => ({
+    id: String(cat.id),
+    name: cat.name,
+  }));
+};
+
 export const fetchPodcasts = async (params: FetchPodcastsParams = {}): Promise<Podcast[]> => {
   const query: Record<string, string> = {};
   if (params.search?.trim()) query.search = params.search.trim();
@@ -35,6 +46,13 @@ export const fetchPodcasts = async (params: FetchPodcastsParams = {}): Promise<P
 export const fetchPodcastById = async (id: string): Promise<Podcast> => {
   const { data } = await api.get<ApiResponse<{ podcast: PodcastApi }>>(`/podcasts/${id}`);
   return mapPodcastFromApi(data.data.podcast);
+};
+
+export const fetchCompressionProgress = async (id: string): Promise<CompressionProgress | null> => {
+  const { data } = await api.get<ApiResponse<{ progress: CompressionProgress | null }>>(
+    `/podcasts/${id}/compression-progress`,
+  );
+  return data.data.progress;
 };
 
 export const createPodcast = async (input: CreatePodcastInput): Promise<Podcast> => {
@@ -66,6 +84,28 @@ export const publishPodcast = async (formData: FormData): Promise<Podcast> => {
   const { data } = await api.post<ApiResponse<{ podcast: PodcastApi }>>('/podcasts', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
+  return mapPodcastFromApi(data.data.podcast);
+};
+
+export interface UpdatePodcastInput {
+  title?: string;
+  description?: string;
+  categoryId?: string;
+}
+
+export const updatePodcast = async (id: string, input: UpdatePodcastInput): Promise<Podcast> => {
+  const body: Record<string, unknown> = {};
+  if (input.title !== undefined) body.title = input.title.trim();
+  if (input.description !== undefined) body.description = input.description.trim() || null;
+  if (input.categoryId !== undefined) {
+    if (input.categoryId && input.categoryId !== CATEGORY_OTHER_ID) {
+      body.category_id = Number(input.categoryId);
+    } else {
+      body.category_id = null;
+    }
+  }
+
+  const { data } = await api.patch<ApiResponse<{ podcast: PodcastApi }>>(`/podcasts/${id}`, body);
   return mapPodcastFromApi(data.data.podcast);
 };
 

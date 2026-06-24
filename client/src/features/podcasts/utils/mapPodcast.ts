@@ -25,6 +25,7 @@ export const mapPodcastFromApi = (api: PodcastApi): Podcast => {
     categoryId: api.category_id != null ? String(api.category_id) : '',
     categoryName: api.category_name ?? 'Sem categoria',
     authorName: api.author_nome,
+    authorId: api.user_id,
     coverUrl: resolveMediaUrl(api.cover_url),
     audioUrl,
     videoUrl,

@@ -69,7 +69,7 @@ export const useLiveBroadcast = () => {
   );
 
   const start = useCallback(
-    async (title: string, mediaType: LiveMediaType) => {
+    async (title: string, mediaType: LiveMediaType, streamId?: string) => {
       setError(null);
       setRecording(null);
       setPhase('connecting');
@@ -94,7 +94,14 @@ export const useLiveBroadcast = () => {
 
       ws.onopen = () => {
         if (isStale()) return;
-        ws.send(JSON.stringify({ type: 'start', title: title.trim(), mediaType }));
+        ws.send(
+          JSON.stringify({
+            type: 'start',
+            title: title.trim(),
+            mediaType,
+            ...(streamId ? { streamId } : {}),
+          }),
+        );
       };
 
       ws.onmessage = (event) => {

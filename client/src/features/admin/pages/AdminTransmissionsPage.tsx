@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { AdminDataTable } from '@/features/admin/components/AdminDataTable';
 import { AdminFeedback } from '@/features/admin/components/AdminFeedback';
 import { AdminFormPanel } from '@/features/admin/components/AdminFormPanel';
@@ -54,6 +55,8 @@ export const AdminTransmissionsPage = () => {
 
   useEffect(() => {
     void load();
+    const timer = window.setInterval(() => void load(), 15_000);
+    return () => window.clearInterval(timer);
   }, [load]);
 
   const toLocalInput = (iso: string | null) => {
@@ -284,6 +287,13 @@ export const AdminTransmissionsPage = () => {
             className: 'text-right',
             render: (row) => (
               <div className="flex justify-end gap-2">
+                {row.status === 'live' && (
+                  <Link to={`/live/${row.id}`}>
+                    <Button type="button" variant="primary" className="!px-2 !py-1.5 text-xs">
+                      Ver ao vivo
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   type="button"
                   variant="outline"

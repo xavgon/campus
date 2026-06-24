@@ -26,12 +26,18 @@ export const ensureSchemaPatches = async (): Promise<void> => {
       scheduled_at TIMESTAMPTZ,
       started_at TIMESTAMPTZ,
       ended_at TIMESTAMPTZ,
+      media_type VARCHAR(20),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status)
+  `);
+
+  await pool.query(`
+    ALTER TABLE streams
+    ADD COLUMN IF NOT EXISTS media_type VARCHAR(20)
   `);
 
   await pool.query(`

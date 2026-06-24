@@ -99,11 +99,17 @@ export class LiveRecorder {
   // ── Escrever chunks ────────────────────────────────────────────────────────
 
   writeAudio(chunk: Buffer): void {
-    this.audioProc?.stdin?.write(chunk);
+    const stdin = this.audioProc?.stdin;
+    if (!stdin || stdin.destroyed) return;
+    if (stdin.writableLength > 256 * 1024) return;
+    stdin.write(chunk);
   }
 
   writeVideo(chunk: Buffer): void {
-    this.videoProc?.stdin?.write(chunk);
+    const stdin = this.videoProc?.stdin;
+    if (!stdin || stdin.destroyed) return;
+    if (stdin.writableLength > 512 * 1024) return;
+    stdin.write(chunk);
   }
 
   // ── Terminar e guardar ────────────────────────────────────────────────────

@@ -1,32 +1,49 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AudioPlayer } from '@/features/podcasts/components/AudioPlayer';
+import { VideoPlayer } from '@/features/podcasts/components/VideoPlayer';
 import { PodcastCover } from '@/features/podcasts/components/PodcastCover';
+import { CompressionBadge } from '@/features/podcasts/components/CompressionBadge';
+import { CompressionDetailPanel } from '@/features/podcasts/components/CompressionDetailPanel';
+import { PodcastEditModal } from '@/features/podcasts/components/PodcastEditModal';
 import { PodcastStatusBadge } from '@/features/podcasts/components/PodcastStatusBadge';
 import {
   canPlayPodcast,
+  deletePodcast,
   downloadPodcast,
+  fetchCompressionProgress,
   fetchPodcastById,
   getPodcastStreamUrl,
   getPodcastVideoStreamUrl,
   hasPodcastVideo,
 } from '@/features/podcasts/services/podcast.service';
+import type { CompressionProgress } from '@/features/podcasts/types/compression';
 import type { Podcast } from '@/features/podcasts/types/podcast';
-import { formatFileSize } from '@/features/podcasts/utils/formatFileSize';
+import { canManagePodcast } from '@/features/podcasts/utils/canManagePodcast';
 import { formatPodcastDate } from '@/features/podcasts/utils/formatPodcastDate';
+import { getCompressionState } from '@/features/podcasts/utils/compressionState';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { Alert } from '@/shared/components/campus/Alert';
+import { Modal } from '@/shared/components/campus/Modal';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
 export const PodcastDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [podcast, setPodcast] = useState<Podcast | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [compressionProgress, setCompressionProgress] = useState<CompressionProgress | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -55,15 +72,34 @@ export const PodcastDetailPage = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!id || !podcast || podcast.status !== 'processing') return;
+    if (!id || !podcast || podcast.status !== 'processing') {
+      setCompressionProgress(null);
+      return;
+    }
 
-    const interval = window.setInterval(() => {
-      void fetchPodcastById(id)
-        .then(setPodcast)
-        .catch(() => {});
-    }, 5000);
+    let cancelled = false;
 
-    return () => window.clearInterval(interval);
+    const poll = async () => {
+      try {
+        const [item, progress] = await Promise.all([
+          fetchPodcastById(id),
+          fetchCompressionProgress(id),
+        ]);
+        if (cancelled) return;
+        setPodcast(item);
+        setCompressionProgress(progress);
+      } catch {
+        // mantém último estado conhecido
+      }
+    };
+
+    void poll();
+    const interval = window.setInterval(() => void poll(), 2000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, [id, podcast?.status]);
 
   if (!id) {
@@ -99,6 +135,8 @@ export const PodcastDetailPage = () => {
   const videoStreamUrl = getPodcastVideoStreamUrl(podcast.id);
   const withVideo = hasPodcastVideo(podcast);
   const playable = canPlayPodcast(podcast) && (withVideo ? videoStreamUrl : streamUrl);
+  const canManage = canManagePodcast(user, podcast);
+  const compressionState = getCompressionState(podcast);
 
   const onDownload = async () => {
     setDownloadError(null);
@@ -112,13 +150,47 @@ export const PodcastDetailPage = () => {
     }
   };
 
+  const onConfirmDelete = async () => {
+    setDeleteError(null);
+    setIsDeleting(true);
+    try {
+      await deletePodcast(podcast.id);
+      navigate('/podcasts', { replace: true });
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="campus-page-enter space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link to="/podcasts" className="text-sm font-bold text-campus-primary hover:underline">
           ← Biblioteca
         </Link>
-        <PodcastStatusBadge status={podcast.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          <PodcastStatusBadge status={podcast.status} />
+          <CompressionBadge state={compressionState} />
+          {canManage && (
+            <>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(true)}>
+                Editar
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-campus-danger hover:bg-campus-danger/10"
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteOpen(true);
+                }}
+              >
+                Eliminar
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
@@ -136,19 +208,6 @@ export const PodcastDetailPage = () => {
             <p>
               <span className="text-campus-muted">Publicado:</span> {formatPodcastDate(podcast.createdAt)}
             </p>
-            {podcast.originalSize != null && (
-              <p>
-                <span className="text-campus-muted">Tamanho original:</span>{' '}
-                {formatFileSize(podcast.originalSize)}
-              </p>
-            )}
-            {podcast.compressedSize != null && (
-              <p>
-                <span className="text-campus-muted">Comprimido:</span>{' '}
-                {formatFileSize(podcast.compressedSize)}
-                {podcast.compressionRatio != null ? ` (−${podcast.compressionRatio}%)` : ''}
-              </p>
-            )}
           </div>
         </div>
 
@@ -158,6 +217,8 @@ export const PodcastDetailPage = () => {
             title={podcast.title}
             description={podcast.description || 'Sem descrição.'}
           />
+
+          <CompressionDetailPanel podcast={podcast} progress={compressionProgress} />
 
           {podcast.status === 'processing' && (
             <ProfileNotice
@@ -170,16 +231,7 @@ export const PodcastDetailPage = () => {
           {playable ? (
             <div className="space-y-4">
               {withVideo && videoStreamUrl ? (
-                <div className="campus-panel overflow-hidden bg-black">
-                  <video
-                    src={videoStreamUrl}
-                    controls
-                    className="aspect-video w-full"
-                    title={podcast.title}
-                  >
-                    O teu browser não suporta reprodução de vídeo.
-                  </video>
-                </div>
+                <VideoPlayer src={videoStreamUrl} title={podcast.title} poster={podcast.coverUrl} />
               ) : streamUrl ? (
                 <AudioPlayer src={streamUrl} title={podcast.title} />
               ) : null}
@@ -217,6 +269,45 @@ export const PodcastDetailPage = () => {
           )}
         </div>
       </div>
+
+      <PodcastEditModal
+        open={editOpen}
+        podcast={podcast}
+        onClose={() => setEditOpen(false)}
+        onSaved={setPodcast}
+      />
+
+      <Modal
+        open={deleteOpen}
+        onClose={() => !isDeleting && setDeleteOpen(false)}
+        title="Eliminar episódio"
+        description="Esta acção é permanente. O áudio, vídeo e capa serão removidos do servidor."
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-campus-accent">
+            Tens a certeza que queres eliminar <strong className="text-campus-foreground">{podcast.title}</strong>?
+          </p>
+          {deleteError && <Alert title="Não foi possível eliminar" message={deleteError} />}
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-campus-danger text-white hover:bg-campus-danger/90"
+              onClick={() => void onConfirmDelete()}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'A eliminar…' : 'Eliminar episódio'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -2,12 +2,19 @@ import type { CorsOptions } from 'cors';
 import { config } from './index';
 
 const LOCAL_DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+/** Cliente desktop Electron (protocolo campus:// em produção empacotada). */
+const CAMPUS_DESKTOP_ORIGIN = /^campus:\/\//;
 
-/** Em dev aceita qualquer porta local (5173, 5174, …). Em produção só CLIENT_URL. */
+/** Em dev aceita qualquer porta local (5173, 5174, …). Em produção só CLIENT_URL + desktop. */
 export const corsOptions: CorsOptions = {
   credentials: true,
   origin: (origin, callback) => {
     if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (CAMPUS_DESKTOP_ORIGIN.test(origin)) {
       callback(null, true);
       return;
     }

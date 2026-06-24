@@ -29,14 +29,9 @@ const AUDIO_MIME_TYPES = new Set([
 ]);
 
 const VIDEO_MIME_TYPES = new Set([
-  'video/webm',
-  'video/mp4',
-  'video/ogg',
-]);
-
-const VIDEO_MIME_TYPES = new Set([
   'video/mp4',        // H.264 / H.265
-  'video/webm',       // VP9
+  'video/webm',       // VP9 / live WebM
+  'video/ogg',
   'video/quicktime',  // MOV
   'video/x-matroska', // MKV
 ]);
@@ -56,6 +51,8 @@ const normalizeMime = (mimetype: string, fieldname: string, originalname: string
   const ext = path.extname(originalname).toLowerCase();
   if (ext === '.webm') return fieldname === 'audio' ? 'audio/webm' : 'video/webm';
   if (ext === '.mp4') return fieldname === 'video' ? 'video/mp4' : 'audio/mp4';
+  if (ext === '.mov') return 'video/quicktime';
+  if (ext === '.mkv') return 'video/x-matroska';
   if (ext === '.mp3') return 'audio/mpeg';
   if (ext === '.wav') return 'audio/wav';
   return base;
@@ -69,10 +66,10 @@ const isVideoMime = (mimetype: string): boolean => VIDEO_MIME_TYPES.has(mimetype
 const storage = multer.diskStorage({
   destination(_req, file, cb) {
     const mime = normalizeMime(file.mimetype, file.fieldname, file.originalname);
-    if (isAudioMime(mime)) {
-      cb(null, audioDir);
-    } else if (VIDEO_MIME_TYPES.has(file.mimetype)) {
+    if (file.fieldname === 'video' || isVideoMime(mime)) {
       cb(null, videoDir);
+    } else if (isAudioMime(mime)) {
+      cb(null, audioDir);
     } else {
       cb(null, coversDir);
     }
@@ -93,7 +90,7 @@ const fileFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
     cb(new AppError('Formato de áudio inválido. Use MP3, WAV, OGG, M4A, FLAC, AAC ou WebM.'));
     return;
   }
-  if (file.fieldname === 'video' && !VIDEO_MIME_TYPES.has(file.mimetype)) {
+  if (file.fieldname === 'video' && !isVideoMime(mime)) {
     cb(new AppError('Formato de vídeo inválido. Use MP4, WebM, MOV ou MKV.'));
     return;
   }

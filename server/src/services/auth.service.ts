@@ -5,6 +5,7 @@ import path from 'path';
 import { compressImage } from '../compression/compress';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
+import { deliverPasswordResetEmail } from '../mail/passwordResetDelivery';
 import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserAvatar, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
 import type { UserRole } from '../types/roles';
 
@@ -80,8 +81,9 @@ interface ResetTokenPayload {
 }
 
 const RESET_TOKEN_EXPIRY = '1h';
+const RESET_TOKEN_EXPIRY_LABEL = '1 hora';
 
-/** Gera token de reset e imprime o link no console (substitui SMTP). */
+/** Gera token de reset e envia email SMTP (ou regista link no console em dev). */
 export const requestPasswordReset = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
   if (!user) return; // resposta genérica — não revela se o email existe
@@ -90,12 +92,12 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   const token = jwt.sign(payload, config.jwtSecret, { expiresIn: RESET_TOKEN_EXPIRY });
   const resetLink = `${config.clientUrl}/reset-password?token=${token}`;
 
-  // Em produção: enviar email com resetLink via SMTP/SendGrid
-  console.info('[CAMPUS] ─── RESET DE PASSWORD ───────────────────────────');
-  console.info(`[CAMPUS] Email : ${email}`);
-  console.info(`[CAMPUS] Link  : ${resetLink}`);
-  console.info(`[CAMPUS] Expira: 1 hora`);
-  console.info('[CAMPUS] ─────────────────────────────────────────────────');
+  await deliverPasswordResetEmail({
+    email: user.email,
+    recipientName: user.nome,
+    resetLink,
+    expiresInLabel: RESET_TOKEN_EXPIRY_LABEL,
+  });
 };
 
 /** Valida token de reset e actualiza a password. */

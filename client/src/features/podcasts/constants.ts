@@ -1,14 +1,4 @@
-/** Categorias placeholder até existir GET /categories */
-export const PODCAST_CATEGORIES = [
-  { id: '1', name: 'Educação geral' },
-  { id: '2', name: 'Ciências' },
-  { id: '3', name: 'História' },
-  { id: '4', name: 'Línguas' },
-  { id: '5', name: 'Tecnologia' },
-  { id: '6', name: 'Artes' },
-] as const;
-
-/** Valor do select quando o utilizador indica categoria personalizada */
+/** Valor do select quando o utilizador indica categoria personalizada (sem ID na BD). */
 export const CATEGORY_OTHER_ID = 'other';
 
 export const PUBLISH_LIMITS = {

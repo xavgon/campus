@@ -6,6 +6,7 @@ import { PodcastListSkeleton } from '@/features/podcasts/components/PodcastListS
 import { PodcastsEmptyState } from '@/features/podcasts/components/PodcastsEmptyState';
 import { PodcastsStats } from '@/features/podcasts/components/PodcastsStats';
 import { PodcastsToolbar } from '@/features/podcasts/components/PodcastsToolbar';
+import { usePodcastCategories } from '@/features/podcasts/hooks/usePodcastCategories';
 import { usePodcastsLibrary } from '@/features/podcasts/hooks/usePodcastsLibrary';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
@@ -35,6 +36,7 @@ export const PodcastsLibraryPage = () => {
     isEmptyLibrary,
     isEmptyResults,
   } = usePodcastsLibrary();
+  const { categories, isLoading: categoriesLoading } = usePodcastCategories();
 
   return (
     <div className="campus-page-enter space-y-8">
@@ -62,6 +64,8 @@ export const PodcastsLibraryPage = () => {
       {!isEmptyLibrary && (
         <PodcastsToolbar
           filters={filters}
+          categories={categories}
+          categoriesLoading={categoriesLoading}
           resultCount={filtered.length}
           hasActiveFilters={hasActiveFilters}
           isSearching={isSearching || (isFetching && podcasts.length > 0)}

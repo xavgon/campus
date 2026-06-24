@@ -1,4 +1,4 @@
-import type { LiveSession } from '@/features/live/types/live.types';
+import type { LiveSession, ScheduledStream } from '@/features/live/types/live.types';
 import { api, SERVER_URL } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types';
 import { getToken } from '@/shared/utils/storage';
@@ -6,6 +6,13 @@ import { getToken } from '@/shared/utils/storage';
 export const fetchActiveLiveSessions = async (): Promise<LiveSession[]> => {
   const { data } = await api.get<ApiResponse<{ sessions: LiveSession[]; total: number }>>('/live');
   return data.data.sessions;
+};
+
+export const fetchScheduledStreams = async (): Promise<ScheduledStream[]> => {
+  const { data } = await api.get<ApiResponse<{ streams: ScheduledStream[]; total: number }>>(
+    '/live/scheduled',
+  );
+  return data.data.streams;
 };
 
 export const buildLiveWebSocketUrl = (params: {

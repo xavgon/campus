@@ -1,5 +1,4 @@
-import { PODCAST_CATEGORIES } from '@/features/podcasts/constants';
-import type { PodcastLibraryFilters, PodcastSort } from '@/features/podcasts/types/podcast';
+import type { PodcastCategory, PodcastLibraryFilters, PodcastSort } from '@/features/podcasts/types/podcast';
 import { Field } from '@/shared/components/campus/Field';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -15,6 +14,8 @@ const selectClass =
 
 interface PodcastsToolbarProps {
   filters: PodcastLibraryFilters;
+  categories: PodcastCategory[];
+  categoriesLoading?: boolean;
   resultCount: number;
   hasActiveFilters: boolean;
   isSearching?: boolean;
@@ -26,6 +27,8 @@ interface PodcastsToolbarProps {
 
 export const PodcastsToolbar = ({
   filters,
+  categories,
+  categoriesLoading = false,
   resultCount,
   hasActiveFilters,
   isSearching = false,
@@ -58,9 +61,10 @@ export const PodcastsToolbar = ({
             className={selectClass}
             value={filters.categoryId}
             onChange={(e) => onCategoryChange(e.target.value)}
+            disabled={categoriesLoading}
           >
-            <option value="">Todas</option>
-            {PODCAST_CATEGORIES.map((cat) => (
+            <option value="">{categoriesLoading ? 'A carregar…' : 'Todas'}</option>
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name}
               </option>
