@@ -105,12 +105,12 @@ const runVideoCompression = async (
     const ext = codec === 'vp9' ? '.webm' : '.mp4';
     const compressedUrl = `/uploads/video/compressed/${path.basename(result.outputPath, path.extname(result.outputPath))}${ext}`;
 
-    await updatePodcastCompression(podcastId, result.compressedSize, result.compressionRatio, compressedUrl);
+    await updatePodcastCompression(podcastId, result.compressedSize, result.compressionRatio, compressedUrl, result.processingTimeMs);
 
     console.log(
       `[CAMPUS] Vídeo comprimido (${codec}): ${podcastId} | ` +
       `${result.originalSize} → ${result.compressedSize} bytes | ` +
-      `${result.compressionRatio}% redução`,
+      `${result.compressionRatio}% redução | ${result.processingTimeMs}ms`,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -131,12 +131,13 @@ const runAudioCompression = async (podcastId: string, inputPath: string): Promis
       result.compressedSize,
       result.compressionRatio,
       compressedUrl,
+      result.processingTimeMs,
     );
 
     console.log(
       `[CAMPUS] Compressão concluída: ${podcastId} | ` +
       `${result.originalSize} → ${result.compressedSize} bytes | ` +
-      `${result.compressionRatio}% redução`,
+      `${result.compressionRatio}% redução | ${result.processingTimeMs}ms`,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

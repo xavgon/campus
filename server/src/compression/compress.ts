@@ -9,6 +9,7 @@ export interface CompressionResult {
   originalSize: number;
   compressedSize: number;
   compressionRatio: number;
+  processingTimeMs: number;
 }
 
 /**
@@ -21,49 +22,35 @@ export const compressImage = async (inputPath: string): Promise<CompressionResul
     throw new Error(`Ficheiro não encontrado: ${inputPath}`);
   }
 
+  const startTime = Date.now();
   const originalSize = fs.statSync(inputPath).size;
   const ext = path.extname(inputPath).toLowerCase();
 
-  // Buffer temporário para não perder o original em caso de erro
   const tmpPath = inputPath + '.tmp';
-
   const image = sharp(inputPath);
 
   if (ext === '.jpg' || ext === '.jpeg') {
-    // JPEG: qualidade 80 com compressão progressiva
-    await image
-      .jpeg({ quality: 80, progressive: true, mozjpeg: true })
-      .toFile(tmpPath);
+    await image.jpeg({ quality: 80, progressive: true, mozjpeg: true }).toFile(tmpPath);
   } else if (ext === '.png') {
-    // PNG: compressionLevel 8 com palette para reduzir tamanho
-    await image
-      .png({ compressionLevel: 8, palette: true })
-      .toFile(tmpPath);
+    await image.png({ compressionLevel: 8, palette: true }).toFile(tmpPath);
   } else if (ext === '.webp') {
-    // WebP: qualidade 80 (melhor compressão que JPEG/PNG)
-    await image
-      .webp({ quality: 80 })
-      .toFile(tmpPath);
+    await image.webp({ quality: 80 }).toFile(tmpPath);
   } else {
-    // Outros formatos: converter para WebP
     const outputPath = inputPath.replace(ext, '.webp');
     await image.webp({ quality: 80 }).toFile(outputPath);
     const compressedSize = fs.statSync(outputPath).size;
     const compressionRatio = originalSize > 0
-      ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
-      : 0;
-    return { outputPath, originalSize, compressedSize, compressionRatio };
+      ? Math.round((1 - compressedSize / originalSize) * 10000) / 100 : 0;
+    return { outputPath, originalSize, compressedSize, compressionRatio, processingTimeMs: Date.now() - startTime };
   }
 
-  // Substituir original pela versão comprimida
   fs.renameSync(tmpPath, inputPath);
 
   const compressedSize = fs.statSync(inputPath).size;
   const compressionRatio = originalSize > 0
-    ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
-    : 0;
+    ? Math.round((1 - compressedSize / originalSize) * 10000) / 100 : 0;
 
-  return { outputPath: inputPath, originalSize, compressedSize, compressionRatio };
+  return { outputPath: inputPath, originalSize, compressedSize, compressionRatio, processingTimeMs: Date.now() - startTime };
 };
 
 /**
@@ -71,6 +58,26 @@ export const compressImage = async (inputPath: string): Promise<CompressionResul
  * Guarda o resultado em uploads/audio/compressed/.
  * Retorna os tamanhos e rácio de compressão.
  */
+// Mapeamento de formato → codec FFmpeg, extensão de saída e argumentos de qualidade
+// MP3  → libmp3lame  128kbps mono  — formato padrão de podcasts
+// AAC  → aac         128kbps       — nativo iOS/macOS, contentor M4A
+// OGG  → libvorbis   quality 4     — formato aberto, ~128kbps
+// WAV / outros → MP3 (grande redução de tamanho)
+type AudioFormat = 'mp3' | 'aac' | 'ogg';
+
+const AUDIO_FORMAT_MAP: Record<string, AudioFormat> = {
+  '.mp3': 'mp3',
+  '.aac': 'aac',
+  '.m4a': 'aac',
+  '.ogg': 'ogg',
+};
+
+const AUDIO_CODEC_ARGS: Record<AudioFormat, { args: string[]; ext: string }> = {
+  mp3: { args: ['-vn', '-ar', '44100', '-ac', '1', '-codec:a', 'libmp3lame', '-b:a', '128k'], ext: '.mp3' },
+  aac: { args: ['-vn', '-ar', '44100', '-codec:a', 'aac', '-b:a', '128k'],                   ext: '.m4a' },
+  ogg: { args: ['-vn', '-ar', '44100', '-codec:a', 'libvorbis', '-q:a', '4'],                ext: '.ogg' },
+};
+
 export const compressAudio = (inputPath: string): Promise<CompressionResult> => {
   return new Promise((resolve, reject) => {
     if (!fs.existsSync(inputPath)) {
@@ -78,60 +85,39 @@ export const compressAudio = (inputPath: string): Promise<CompressionResult> => 
       return;
     }
 
+    const startTime = Date.now();
     const originalSize = fs.statSync(inputPath).size;
+    const inputExt = path.extname(inputPath).toLowerCase();
+    const format: AudioFormat = AUDIO_FORMAT_MAP[inputExt] ?? 'mp3';
+    const { args: codecArgs, ext: outputExt } = AUDIO_CODEC_ARGS[format];
 
-    // Pasta de destino: uploads/audio/compressed/
     const compressedDir = path.join(path.dirname(inputPath), 'compressed');
     if (!fs.existsSync(compressedDir)) {
       fs.mkdirSync(compressedDir, { recursive: true });
     }
 
-    const baseName = path.basename(inputPath, path.extname(inputPath));
-    const outputPath = path.join(compressedDir, `${baseName}.mp3`);
+    const baseName = path.basename(inputPath, inputExt);
+    const outputPath = path.join(compressedDir, `${baseName}${outputExt}`);
 
-    // FFmpeg: converter para MP3 mono 128kbps
-    // -y          → sobrescrever sem confirmação
-    // -i          → ficheiro de entrada
-    // -vn         → sem vídeo
-    // -ar 44100   → sample rate 44.1kHz
-    // -ac 1       → mono (reduz tamanho ~50% vs stereo)
-    // -b:a 128k   → bitrate 128kbps (boa qualidade para podcasts)
-    // -map_metadata 0 → preservar metadados
-    const args = [
-      '-y',
-      '-i', inputPath,
-      '-vn',
-      '-ar', '44100',
-      '-ac', '1',
-      '-b:a', '128k',
-      '-map_metadata', '0',
-      outputPath,
-    ];
-
+    const args = ['-y', '-i', inputPath, ...codecArgs, '-map_metadata', '0', outputPath];
     const proc = spawn(config.ffmpegPath, args);
 
     let stderr = '';
-    proc.stderr.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
+    proc.stderr.on('data', (data: Buffer) => { stderr += data.toString(); });
 
     proc.on('close', (code) => {
       if (code !== 0) {
         reject(new Error(`FFmpeg falhou (código ${code}): ${stderr.slice(-300)}`));
         return;
       }
-
       if (!fs.existsSync(outputPath)) {
         reject(new Error('FFmpeg terminou mas o ficheiro de saída não foi criado'));
         return;
       }
-
       const compressedSize = fs.statSync(outputPath).size;
       const compressionRatio = originalSize > 0
-        ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
-        : 0;
-
-      resolve({ outputPath, originalSize, compressedSize, compressionRatio });
+        ? Math.round((1 - compressedSize / originalSize) * 10000) / 100 : 0;
+      resolve({ outputPath, originalSize, compressedSize, compressionRatio, processingTimeMs: Date.now() - startTime });
     });
 
     proc.on('error', (err) => {
@@ -157,6 +143,7 @@ export const compressVideo = (
       return;
     }
 
+    const startTime = Date.now();
     const originalSize = fs.statSync(inputPath).size;
 
     const compressedDir = path.join(path.dirname(inputPath), 'compressed');
@@ -206,10 +193,8 @@ export const compressVideo = (
 
       const compressedSize = fs.statSync(outputPath).size;
       const compressionRatio = originalSize > 0
-        ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
-        : 0;
-
-      resolve({ outputPath, originalSize, compressedSize, compressionRatio });
+        ? Math.round((1 - compressedSize / originalSize) * 10000) / 100 : 0;
+      resolve({ outputPath, originalSize, compressedSize, compressionRatio, processingTimeMs: Date.now() - startTime });
     });
 
     proc.on('error', (err) => {

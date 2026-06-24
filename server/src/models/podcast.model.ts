@@ -11,6 +11,7 @@ export interface Podcast {
   original_size: number | null;
   compressed_size: number | null;
   compression_ratio: number | null;
+  processing_time_ms: number | null;
   category_id: number | null;
   category_name: string | null;
   user_id: string;
@@ -31,7 +32,7 @@ export interface CreatePodcastData {
 const podcastSelect = `
   p.id, p.title, p.description,
   p.audio_url, p.cover_url,
-  p.original_size, p.compressed_size, p.compression_ratio,
+  p.original_size, p.compressed_size, p.compression_ratio, p.processing_time_ms,
   p.category_id, c.name AS category_name,
   p.user_id, u.nome AS author_nome,
   p.created_at
@@ -118,12 +119,13 @@ export const updatePodcastCompression = async (
   compressedSize: number,
   compressionRatio: number,
   compressedAudioUrl: string,
+  processingTimeMs: number,
 ): Promise<void> => {
   await getPool().query(
     `UPDATE podcasts
-     SET compressed_size = $1, compression_ratio = $2, audio_url = $3
-     WHERE id = $4`,
-    [compressedSize, compressionRatio, compressedAudioUrl, id],
+     SET compressed_size = $1, compression_ratio = $2, audio_url = $3, processing_time_ms = $4
+     WHERE id = $5`,
+    [compressedSize, compressionRatio, compressedAudioUrl, processingTimeMs, id],
   );
 };
 
