@@ -1,4 +1,5 @@
 import {
+  LIVE_AUDIO_CHUNK_SAMPLES,
   LIVE_AUDIO_SAMPLE_RATE,
   LIVE_JPEG_QUALITY,
   LIVE_TYPE_AUDIO,
@@ -24,6 +25,28 @@ export const wantsLiveVideo = (mediaType: LiveMediaType): boolean =>
 export const wantsLiveAudio = (mediaType: LiveMediaType): boolean =>
   mediaType === 'audio' || mediaType === 'both';
 
+const buildMediaConstraints = (
+  wantsVideo: boolean,
+  wantsAudio: boolean,
+): MediaStreamConstraints => ({
+  video: wantsVideo
+    ? {
+        width: { ideal: LIVE_VIDEO_STREAM_WIDTH },
+        height: { ideal: LIVE_VIDEO_STREAM_HEIGHT },
+        frameRate: { ideal: LIVE_VIDEO_FPS, max: LIVE_VIDEO_FPS + 3 },
+      }
+    : false,
+  audio: wantsAudio
+    ? {
+        channelCount: 1,
+        sampleRate: { ideal: LIVE_AUDIO_SAMPLE_RATE },
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      }
+    : false,
+});
+
 export const startLiveCapture = async (
   mediaType: LiveMediaType,
   previewCanvas: HTMLCanvasElement | null,
@@ -32,10 +55,9 @@ export const startLiveCapture = async (
   const wantsVideo = wantsLiveVideo(mediaType);
   const wantsAudio = wantsLiveAudio(mediaType);
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: wantsVideo,
-    audio: wantsAudio,
-  });
+  const stream = await navigator.mediaDevices.getUserMedia(
+    buildMediaConstraints(wantsVideo, wantsAudio),
+  );
 
   const liveRecorder = createLiveRecorders(stream, mediaType);
 
@@ -50,13 +72,19 @@ export const startLiveCapture = async (
     videoEl.playsInline = true;
     await videoEl.play();
 
-    const previewCtx = previewCanvas?.getContext('2d') ?? null;
+    const previewCtx = previewCanvas?.getContext('2d', { alpha: false }) ?? null;
+    if (previewCtx) {
+      previewCtx.imageSmoothingEnabled = true;
+      previewCtx.imageSmoothingQuality = 'medium';
+    }
 
     const streamCanvas = document.createElement('canvas');
     streamCanvas.width = LIVE_VIDEO_STREAM_WIDTH;
     streamCanvas.height = LIVE_VIDEO_STREAM_HEIGHT;
-    const streamCtx = streamCanvas.getContext('2d');
+    const streamCtx = streamCanvas.getContext('2d', { alpha: false });
     if (!streamCtx) throw new Error('Canvas de stream não suportado');
+    streamCtx.imageSmoothingEnabled = true;
+    streamCtx.imageSmoothingQuality = 'medium';
 
     let stopped = false;
     let encoding = false;
@@ -79,13 +107,13 @@ export const startLiveCapture = async (
       }
 
       const now = performance.now();
-      if (now - lastCaptureMs < frameIntervalMs * 0.85) {
+      if (now - lastCaptureMs < frameIntervalMs * 0.9) {
         scheduleNextFrame();
         return;
       }
       lastCaptureMs = now;
 
-      if (previewCtx && previewCanvas && previewTick++ % 4 === 0) {
+      if (previewCtx && previewCanvas && previewTick++ % 3 === 0) {
         previewCtx.drawImage(videoEl, 0, 0, LIVE_VIDEO_WIDTH, LIVE_VIDEO_HEIGHT);
       }
       streamCtx.drawImage(videoEl, 0, 0, LIVE_VIDEO_STREAM_WIDTH, LIVE_VIDEO_STREAM_HEIGHT);
@@ -116,11 +144,6 @@ export const startLiveCapture = async (
 
     const scheduleNextFrame = () => {
       if (stopped) return;
-      if ('requestVideoFrameCallback' in videoEl) {
-        (videoEl as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => void })
-          .requestVideoFrameCallback(() => captureFrame());
-        return;
-      }
       frameTimer = setTimeout(captureFrame, frameIntervalMs);
     };
 
@@ -133,9 +156,14 @@ export const startLiveCapture = async (
   }
 
   if (wantsAudio) {
-    audioContext = new AudioContext({ sampleRate: LIVE_AUDIO_SAMPLE_RATE });
+    audioContext = new AudioContext({
+      sampleRate: LIVE_AUDIO_SAMPLE_RATE,
+      latencyHint: 'interactive',
+    });
+    await audioContext.resume();
+
     const source = audioContext.createMediaStreamSource(stream);
-    audioProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+    audioProcessor = audioContext.createScriptProcessor(LIVE_AUDIO_CHUNK_SAMPLES, 1, 1);
     const silentGain = audioContext.createGain();
     silentGain.gain.value = 0;
     source.connect(audioProcessor);
@@ -167,33 +195,12 @@ export const startLiveCapture = async (
 };
 
 export const createListenerAudioContext = (): AudioContext =>
-  new AudioContext({ sampleRate: LIVE_AUDIO_SAMPLE_RATE });
+  new AudioContext({
+    sampleRate: LIVE_AUDIO_SAMPLE_RATE,
+    latencyHint: 'interactive',
+  });
 
-export const playLiveAudioChunk = (
-  audioContext: AudioContext,
-  buffer: ArrayBuffer,
-  schedule?: { next: number },
-): void => {
-  const int16 = new Int16Array(buffer);
-  const float32 = new Float32Array(int16.length);
-  for (let i = 0; i < int16.length; i++) {
-    float32[i] = int16[i] / 32767;
-  }
-  const audioBuf = audioContext.createBuffer(1, float32.length, LIVE_AUDIO_SAMPLE_RATE);
-  audioBuf.getChannelData(0).set(float32);
-  const source = audioContext.createBufferSource();
-  source.buffer = audioBuf;
-  source.connect(audioContext.destination);
-
-  const duration = float32.length / LIVE_AUDIO_SAMPLE_RATE;
-  const now = audioContext.currentTime;
-  const startAt =
-    !schedule || schedule.next <= now ? now + 0.03 : schedule.next;
-  if (schedule) {
-    schedule.next = startAt + duration;
-  }
-  source.start(startAt);
-};
+export { playLiveAudioChunk } from '@/features/live/utils/liveAudioPlayback';
 
 export const formatLiveDuration = (startedAt: string): string => {
   const start = new Date(startedAt).getTime();

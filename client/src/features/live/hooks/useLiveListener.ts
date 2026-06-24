@@ -8,6 +8,7 @@ import {
   wantsLiveAudio,
   wantsLiveVideo,
 } from '@/features/live/utils/liveMedia';
+import { resetAudioSchedule } from '@/features/live/utils/liveAudioPlayback';
 import { createLiveVideoRenderer, type LiveVideoRenderer } from '@/features/live/utils/liveVideoRenderer';
 
 export type ListenerPhase = 'idle' | 'connecting' | 'watching' | 'ended' | 'error';
@@ -87,6 +88,7 @@ export const useLiveListener = (liveId: string | undefined) => {
             if (wantsLiveAudio(msg.mediaType)) {
               audioCtxRef.current = createListenerAudioContext();
               audioScheduleRef.current.next = 0;
+              resetAudioSchedule(audioScheduleRef.current, audioCtxRef.current);
               setNeedsAudioUnlock(audioCtxRef.current.state === 'suspended');
             }
           }
@@ -152,6 +154,7 @@ export const useLiveListener = (liveId: string | undefined) => {
   const unlockAudio = async () => {
     if (!audioCtxRef.current) return;
     await audioCtxRef.current.resume();
+    resetAudioSchedule(audioScheduleRef.current, audioCtxRef.current);
     setNeedsAudioUnlock(false);
   };
 

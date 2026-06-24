@@ -1,8 +1,14 @@
 import type { Podcast } from '@/features/podcasts/types/podcast';
+import type { CompressionProgress } from '@/features/podcasts/types/compression';
 
 export type CompressionState = 'pending' | 'processing' | 'complete';
 
-export const getCompressionState = (podcast: Podcast): CompressionState => {
+export const getCompressionState = (
+  podcast: Podcast,
+  progress?: CompressionProgress | null,
+): CompressionState => {
+  if (progress?.active) return 'processing';
+
   const hasMedia = Boolean(podcast.audioUrl || podcast.videoUrl);
   if (!hasMedia) return 'pending';
   if (podcast.compressedSize != null) return 'complete';

@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
 import type { MediaType } from './live.gateway';
+import { LIVE_RECORDING_VIDEO_FPS } from './live.constants';
 
 // ─── Pasta de gravações ───────────────────────────────────────────────────────
 
@@ -84,9 +85,14 @@ export class LiveRecorder {
 
     this.videoProc = spawn(config.ffmpegPath, [
       '-y',
-      '-f', 'mjpeg', '-framerate', '15',
+      '-f', 'mjpeg',
+      '-framerate', String(LIVE_RECORDING_VIDEO_FPS),
       '-i', 'pipe:0',
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-crf', '22',
+      '-pix_fmt', 'yuv420p',
+      '-r', String(LIVE_RECORDING_VIDEO_FPS),
       '-movflags', '+faststart',
       outPath,
     ]);
@@ -101,14 +107,14 @@ export class LiveRecorder {
   writeAudio(chunk: Buffer): void {
     const stdin = this.audioProc?.stdin;
     if (!stdin || stdin.destroyed) return;
-    if (stdin.writableLength > 256 * 1024) return;
+    if (stdin.writableLength > 512 * 1024) return;
     stdin.write(chunk);
   }
 
   writeVideo(chunk: Buffer): void {
     const stdin = this.videoProc?.stdin;
     if (!stdin || stdin.destroyed) return;
-    if (stdin.writableLength > 512 * 1024) return;
+    if (stdin.writableLength > 1024 * 1024) return;
     stdin.write(chunk);
   }
 

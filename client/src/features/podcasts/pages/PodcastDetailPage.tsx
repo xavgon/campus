@@ -72,12 +72,19 @@ export const PodcastDetailPage = () => {
   }, [id]);
 
   useEffect(() => {
-    if (!id || !podcast || podcast.status !== 'processing') {
+    if (!id || !podcast) return;
+
+    const shouldPoll =
+      podcast.status === 'processing' ||
+      podcast.compressedSize == null;
+
+    if (!shouldPoll) {
       setCompressionProgress(null);
       return;
     }
 
     let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
 
     const poll = async () => {
       try {
@@ -86,21 +93,32 @@ export const PodcastDetailPage = () => {
           fetchCompressionProgress(id),
         ]);
         if (cancelled) return;
+
         setPodcast(item);
         setCompressionProgress(progress);
+
+        const finished =
+          item.compressedSize != null &&
+          (progress == null || !progress.active);
+
+        if (finished && intervalId) {
+          window.clearInterval(intervalId);
+          intervalId = undefined;
+          setCompressionProgress(null);
+        }
       } catch {
         // mantém último estado conhecido
       }
     };
 
     void poll();
-    const interval = window.setInterval(() => void poll(), 2000);
+    intervalId = window.setInterval(() => void poll(), 2000);
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (intervalId) window.clearInterval(intervalId);
     };
-  }, [id, podcast?.status]);
+  }, [id, podcast?.id, podcast?.status, podcast?.compressedSize]);
 
   if (!id) {
     return (
@@ -136,7 +154,7 @@ export const PodcastDetailPage = () => {
   const withVideo = hasPodcastVideo(podcast);
   const playable = canPlayPodcast(podcast) && (withVideo ? videoStreamUrl : streamUrl);
   const canManage = canManagePodcast(user, podcast);
-  const compressionState = getCompressionState(podcast);
+  const compressionState = getCompressionState(podcast, compressionProgress);
 
   const onDownload = async () => {
     setDownloadError(null);
@@ -220,7 +238,7 @@ export const PodcastDetailPage = () => {
 
           <CompressionDetailPanel podcast={podcast} progress={compressionProgress} />
 
-          {podcast.status === 'processing' && (
+          {(podcast.status === 'processing' || compressionProgress?.active) && (
             <ProfileNotice
               title="A processar"
               message="O áudio está a ser comprimido. Podes ouvir a versão original; a qualidade optimizada ficará disponível em breve."

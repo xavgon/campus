@@ -12,6 +12,11 @@ import {
   LiveStreamNotFoundError,
   type StreamMediaType,
 } from '../models/stream.model';
+import {
+  LIVE_LISTENER_BUFFER_AUDIO,
+  LIVE_LISTENER_BUFFER_VIDEO,
+  LIVE_TYPE_AUDIO,
+} from './live.constants';
 import { LiveRecorder } from './live.recorder';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -71,9 +76,12 @@ const send = (ws: WebSocket, data: object) => {
 };
 
 const broadcast = (session: LiveSession, data: Buffer | Uint8Array) => {
+  const isAudio = data[0] === LIVE_TYPE_AUDIO;
+  const limit = isAudio ? LIVE_LISTENER_BUFFER_AUDIO : LIVE_LISTENER_BUFFER_VIDEO;
+
   for (const listener of session.listeners) {
     if (listener.readyState !== WebSocket.OPEN) continue;
-    if (listener.bufferedAmount > 512 * 1024) continue;
+    if (listener.bufferedAmount > limit) continue;
     listener.send(data);
   }
 };

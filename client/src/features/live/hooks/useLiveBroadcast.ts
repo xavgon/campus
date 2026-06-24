@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LIVE_WS_MAX_BUFFER } from '@/features/live/constants';
+import { LIVE_TYPE_AUDIO, LIVE_WS_MAX_BUFFER, LIVE_WS_MAX_BUFFER_VIDEO } from '@/features/live/constants';
 import { buildLiveWebSocketUrl } from '@/features/live/services/live.service';
 import type { LiveMediaType } from '@/features/live/types/live.types';
 import {
@@ -120,8 +120,10 @@ export const useLiveBroadcast = () => {
             setStartedAtMs(Date.now());
             void startLiveCapture(mediaType, previewRef.current, (chunk) => {
               if (ws.readyState !== WebSocket.OPEN) return;
-              if (ws.bufferedAmount > LIVE_WS_MAX_BUFFER) return;
-              ws.send(new Uint8Array(chunk));
+              const isAudio = chunk[0] === LIVE_TYPE_AUDIO;
+              const limit = isAudio ? LIVE_WS_MAX_BUFFER : LIVE_WS_MAX_BUFFER_VIDEO;
+              if (ws.bufferedAmount > limit) return;
+              ws.send(chunk);
             })
               .then((handles) => {
                 captureRef.current = handles;
