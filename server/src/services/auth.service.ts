@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import path from 'path';
+import { compressImage } from '../compression/compress';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserAvatar, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
@@ -127,6 +128,18 @@ export const updateAvatar = async (userId: string, newFilePath: string): Promise
   if (user.foto_perfil) {
     const oldPath = path.join(__dirname, '..', '..', user.foto_perfil);
     if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+  }
+
+  // comprimir a nova foto antes de guardar
+  const physicalPath = path.join(process.cwd(), newFilePath);
+  try {
+    const result = await compressImage(physicalPath);
+    console.log(
+      `[CAMPUS] Avatar comprimido: ${result.originalSize} → ${result.compressedSize} bytes | ${result.compressionRatio}% redução`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[CAMPUS] Compressão de avatar falhou (guardado sem compressão): ${msg}`);
   }
 
   const updated = await updateUserAvatar(userId, newFilePath);

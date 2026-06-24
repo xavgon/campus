@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import { config } from '../config';
 
 export interface CompressionResult {
@@ -9,6 +10,61 @@ export interface CompressionResult {
   compressedSize: number;
   compressionRatio: number;
 }
+
+/**
+ * Comprime uma imagem (JPEG, PNG ou WebP) usando sharp.
+ * Sobrescreve o ficheiro original com a versão comprimida.
+ * Suporta conversão entre formatos (ex: PNG → WebP).
+ */
+export const compressImage = async (inputPath: string): Promise<CompressionResult> => {
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`Ficheiro não encontrado: ${inputPath}`);
+  }
+
+  const originalSize = fs.statSync(inputPath).size;
+  const ext = path.extname(inputPath).toLowerCase();
+
+  // Buffer temporário para não perder o original em caso de erro
+  const tmpPath = inputPath + '.tmp';
+
+  const image = sharp(inputPath);
+
+  if (ext === '.jpg' || ext === '.jpeg') {
+    // JPEG: qualidade 80 com compressão progressiva
+    await image
+      .jpeg({ quality: 80, progressive: true, mozjpeg: true })
+      .toFile(tmpPath);
+  } else if (ext === '.png') {
+    // PNG: compressionLevel 8 com palette para reduzir tamanho
+    await image
+      .png({ compressionLevel: 8, palette: true })
+      .toFile(tmpPath);
+  } else if (ext === '.webp') {
+    // WebP: qualidade 80 (melhor compressão que JPEG/PNG)
+    await image
+      .webp({ quality: 80 })
+      .toFile(tmpPath);
+  } else {
+    // Outros formatos: converter para WebP
+    const outputPath = inputPath.replace(ext, '.webp');
+    await image.webp({ quality: 80 }).toFile(outputPath);
+    const compressedSize = fs.statSync(outputPath).size;
+    const compressionRatio = originalSize > 0
+      ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
+      : 0;
+    return { outputPath, originalSize, compressedSize, compressionRatio };
+  }
+
+  // Substituir original pela versão comprimida
+  fs.renameSync(tmpPath, inputPath);
+
+  const compressedSize = fs.statSync(inputPath).size;
+  const compressionRatio = originalSize > 0
+    ? Math.round((1 - compressedSize / originalSize) * 10000) / 100
+    : 0;
+
+  return { outputPath: inputPath, originalSize, compressedSize, compressionRatio };
+};
 
 /**
  * Comprime um ficheiro de áudio para MP3 128kbps usando FFmpeg.

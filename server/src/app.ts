@@ -1,7 +1,11 @@
 import cors from 'cors';
 import express from 'express';
+import fs from 'fs';
+import helmet from 'helmet';
 import http from 'http';
+import https from 'https';
 import path from 'path';
+import rateLimit from 'express-rate-limit';
 import { config } from './config';
 import { corsOptions } from './config/cors';
 import { ensureSchemaPatches } from './database/ensureSchemaPatches';
@@ -19,6 +23,20 @@ import { liveRouter } from './routes/live.routes';
 
 const app = express();
 
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Demasiadas tentativas. Tenta novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,7 +50,7 @@ if (config.nodeEnv !== 'production') {
 }
 
 app.use('/api/health', healthRouter);
-app.use('/api/auth', authRouter);
+app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/presence', presenceRouter);
 app.use('/api/podcasts', podcastRouter);
 app.use('/api/stream', streamRouter);
@@ -42,11 +60,31 @@ app.use('/api/admin', adminRouter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const httpServer = http.createServer(app);
+const certsDir = path.join(__dirname, '..', 'certs');
+const keyPath = path.join(certsDir, 'servidor.key');
+const certPath = path.join(certsDir, 'servidor.crt');
+const caPath = path.join(certsDir, 'ca.crt');
+const hasTls = fs.existsSync(keyPath) && fs.existsSync(certPath);
+
+const httpServer = hasTls
+  ? https.createServer(
+      {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+        ...(fs.existsSync(caPath) ? { ca: fs.readFileSync(caPath) } : {}),
+      },
+      app,
+    )
+  : http.createServer(app);
+
 attachLiveGateway(httpServer);
 
 httpServer.listen(config.port, () => {
-  console.log(`[CAMPUS] API em http://localhost:${config.port}`);
+  const scheme = hasTls ? 'https' : 'http';
+  console.log(`[CAMPUS] API em ${scheme}://localhost:${config.port}`);
+  if (!hasTls && config.nodeEnv !== 'production') {
+    console.warn('[CAMPUS] Certificados TLS não encontrados — a correr em HTTP (dev).');
+  }
 
   if (config.nodeEnv !== 'production' && config.databaseUrl) {
     void (async () => {

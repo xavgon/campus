@@ -61,6 +61,14 @@ export const createPodcast = async (input: CreatePodcastInput): Promise<Podcast>
   return mapPodcastFromApi(data.data.podcast);
 };
 
+/** Alias usado em fluxos que já montam FormData. */
+export const publishPodcast = async (formData: FormData): Promise<Podcast> => {
+  const { data } = await api.post<ApiResponse<{ podcast: PodcastApi }>>('/podcasts', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return mapPodcastFromApi(data.data.podcast);
+};
+
 export const deletePodcast = async (id: string): Promise<void> => {
   await api.delete(`/podcasts/${id}`);
 };

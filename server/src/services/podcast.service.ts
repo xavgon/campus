@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { compressAudio } from '../compression/compress';
+import { compressAudio, compressImage } from '../compression/compress';
 import { extractAudioFromVideo } from '../compression/extractAudio';
 import { AppError } from '../middleware/errorHandler';
 import {
@@ -13,24 +13,16 @@ import {
 } from '../models/podcast.model';
 import type { CreatePodcastInput } from '../validations/podcast.validation';
 
-// ─── Listar ───────────────────────────────────────────────────────────────────
-
 export const getPodcasts = async (opts?: {
   search?: string;
   category_id?: number;
-}): Promise<Podcast[]> => {
-  return listPodcasts(opts);
-};
-
-// ─── Detalhe ──────────────────────────────────────────────────────────────────
+}): Promise<Podcast[]> => listPodcasts(opts);
 
 export const getPodcastById = async (id: string): Promise<Podcast> => {
   const podcast = await findPodcastById(id);
   if (!podcast) throw new AppError('Podcast não encontrado', 404);
   return podcast;
 };
-
-// ─── Criar ────────────────────────────────────────────────────────────────────
 
 export const createPodcast = async (
   input: CreatePodcastInput,
@@ -82,18 +74,36 @@ export const createPodcast = async (
   });
 
   if (audioPhysicalPath) {
-    void runCompression(podcast.id, audioPhysicalPath);
+    void runAudioCompression(podcast.id, audioPhysicalPath);
+  }
+
+  if (files.cover) {
+    const physicalCoverPath = path.join(process.cwd(), `/uploads/covers/${files.cover.filename}`);
+    void runImageCompression('capa', physicalCoverPath);
   }
 
   return podcast;
 };
 
-const runCompression = async (podcastId: string, inputPath: string): Promise<void> => {
+const runImageCompression = async (label: string, inputPath: string): Promise<void> => {
+  try {
+    console.log(`[CAMPUS] Compressão de imagem iniciada: ${label}`);
+    const result = await compressImage(inputPath);
+    console.log(
+      `[CAMPUS] Imagem comprimida: ${label} | ` +
+        `${result.originalSize} → ${result.compressedSize} bytes | ` +
+        `${result.compressionRatio}% redução`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[CAMPUS] Compressão de imagem falhou (${label}): ${msg}`);
+  }
+};
+
+const runAudioCompression = async (podcastId: string, inputPath: string): Promise<void> => {
   try {
     console.log(`[CAMPUS] Compressão iniciada: ${podcastId}`);
     const result = await compressAudio(inputPath);
-
-    // audio_url comprimido: /uploads/audio/compressed/filename.mp3
     const compressedUrl = `/uploads/audio/compressed/${path.basename(result.outputPath)}`;
 
     await updatePodcastCompression(
@@ -105,8 +115,8 @@ const runCompression = async (podcastId: string, inputPath: string): Promise<voi
 
     console.log(
       `[CAMPUS] Compressão concluída: ${podcastId} | ` +
-      `${result.originalSize} → ${result.compressedSize} bytes | ` +
-      `${result.compressionRatio}% redução`,
+        `${result.originalSize} → ${result.compressedSize} bytes | ` +
+        `${result.compressionRatio}% redução`,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -121,6 +131,7 @@ const AUDIO_MIME: Record<string, string> = {
   '.m4a': 'audio/mp4',
   '.aac': 'audio/aac',
   '.flac': 'audio/flac',
+  '.webm': 'audio/webm',
 };
 
 const resolveUploadPath = (urlPath: string): string =>
@@ -161,8 +172,6 @@ export const getPodcastDownload = async (id: string): Promise<PodcastDownloadInf
   };
 };
 
-// ─── Eliminar ─────────────────────────────────────────────────────────────────
-
 export const deletePodcast = async (
   id: string,
   userId: string,
@@ -174,10 +183,8 @@ export const deletePodcast = async (
     throw new AppError('Podcast não encontrado ou sem permissão para eliminar', 404);
   }
 
-  // Apagar ficheiros físicos do disco
   for (const urlField of [result.audio_url, result.video_url, result.cover_url]) {
     if (!urlField) continue;
-    // urlField = "/uploads/audio/filename.mp3" → caminho relativo ao processo
     const filePath = path.join(process.cwd(), urlField);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
