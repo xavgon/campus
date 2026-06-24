@@ -23,6 +23,12 @@ export const RegisterPage = () => {
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [touched, setTouched] = useState({ nome: false, email: false, password: false });
 
+  // Hook must be called before any early return
+  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
+    await register({ nome: nome.trim(), email: email.trim(), password });
+    void navigate('/dashboard');
+  });
+
   if (!isLoading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -38,11 +44,6 @@ export const RegisterPage = () => {
       return next;
     });
   };
-
-  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await register({ nome: nome.trim(), email: email.trim(), password });
-    void navigate('/dashboard');
-  });
 
   const onFormSubmit = (event: FormEvent) => {
     const errors = runValidation();

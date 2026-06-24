@@ -40,6 +40,17 @@ export const LoginPage = () => {
     }
   }, []);
 
+  // Hook must be called before any early return
+  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
+    await login({ email: email.trim(), password });
+    if (rememberMe) {
+      localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
+    } else {
+      localStorage.removeItem(REMEMBER_EMAIL_KEY);
+    }
+    void navigate('/dashboard');
+  });
+
   const runValidation = (nextEmail = email, nextPassword = password) =>
     validateLoginFields(nextEmail, nextPassword);
 
@@ -55,16 +66,6 @@ export const LoginPage = () => {
   if (!isLoading && isAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
-
-  const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await login({ email: email.trim(), password });
-    if (rememberMe) {
-      localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
-    } else {
-      localStorage.removeItem(REMEMBER_EMAIL_KEY);
-    }
-    void navigate('/dashboard');
-  });
 
   const onFormSubmit = (event: FormEvent) => {
     const errors = runValidation();

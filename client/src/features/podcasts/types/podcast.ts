@@ -9,6 +9,8 @@ export interface Podcast {
   categoryId: string;
   categoryName: string;
   coverUrl?: string;
+  mediaUrl?: string;
+  mediaType?: 'audio' | 'video';
   durationSeconds: number;
   status: PodcastStatus;
   createdAt: string;

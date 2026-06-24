@@ -15,11 +15,15 @@ export interface PublishFormValues {
   categoryId: string;
   categoryOther: string;
   audio: File | null;
+  video: File | null;
   cover: File | null;
 }
 
 const isAudioFile = (file: File): boolean =>
   file.type.startsWith('audio/') || /\.(mp3|wav|m4a)$/i.test(file.name);
+
+const isVideoFile = (file: File): boolean =>
+  file.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(file.name);
 
 const isImageFile = (file: File): boolean =>
   file.type.startsWith('image/') || /\.(jpe?g|png|webp)$/i.test(file.name);
@@ -55,12 +59,17 @@ export const validatePublishForm = (values: PublishFormValues): PublishFormError
     }
   }
 
-  if (!values.audio) {
-    errors.audio = 'O ficheiro de áudio é obrigatório.';
-  } else if (!isAudioFile(values.audio)) {
+  // Áudio OU vídeo é obrigatório
+  if (!values.audio && !values.video) {
+    errors.audio = 'Carrega um ficheiro de áudio ou vídeo.';
+  } else if (values.audio && !isAudioFile(values.audio)) {
     errors.audio = 'Formato inválido. Usa MP3, WAV ou M4A.';
-  } else if (values.audio.size > maxBytes(PUBLISH_LIMITS.audioMaxMb)) {
+  } else if (values.audio && values.audio.size > maxBytes(PUBLISH_LIMITS.audioMaxMb)) {
     errors.audio = `O áudio não pode exceder ${PUBLISH_LIMITS.audioMaxMb} MB.`;
+  } else if (values.video && !isVideoFile(values.video)) {
+    errors.audio = 'Formato de vídeo inválido. Usa MP4, WebM ou MOV.';
+  } else if (values.video && values.video.size > maxBytes(PUBLISH_LIMITS.audioMaxMb)) {
+    errors.audio = `O vídeo não pode exceder ${PUBLISH_LIMITS.audioMaxMb} MB.`;
   }
 
   if (values.cover) {

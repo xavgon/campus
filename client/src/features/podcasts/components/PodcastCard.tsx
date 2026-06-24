@@ -39,6 +39,27 @@ export const PodcastCard = ({ podcast }: PodcastCardProps) => (
           <span>{podcast.playCount} reproduções</span>
         )}
       </footer>
+
+      {podcast.mediaUrl && (
+        <div className="border-t border-campus-border/40 bg-black/20 px-4 py-3">
+          {podcast.mediaType === 'video' ? (
+            <video
+              src={podcast.mediaUrl}
+              controls
+              className="w-full rounded-none"
+              style={{ maxHeight: '12rem' }}
+              preload="metadata"
+            />
+          ) : (
+            <audio
+              src={podcast.mediaUrl}
+              controls
+              className="w-full"
+              preload="metadata"
+            />
+          )}
+        </div>
+      )}
     </div>
   </article>
 );
