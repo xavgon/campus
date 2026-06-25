@@ -13,6 +13,7 @@ import { ensureDefaultAdmin } from './database/seedAdmin';
 import { attachLiveGateway } from './live/live.gateway';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import { requireClientCert } from './middleware/clientCert.middleware';
 import { authRouter } from './routes/auth.routes';
 import { categoriesRouter } from './routes/categories.routes';
 import { healthRouter } from './routes/health.routes';
@@ -44,6 +45,13 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use('/uploads', express.static(path.join(__dirname, '..', config.uploadDir)));
 
+// ── mTLS: verificação de certificado de cliente (Task 1 / Task 2) ─────────────
+// Aplicado a todas as rotas da API. O middleware permite:
+//   • Clientes com certificado válido assinado pela CA
+//   • IPs na allowlist (Task 8 — excepção administrativa)
+// Em desenvolvimento, localhost está na allowlist automaticamente (proxy Vite).
+app.use('/api', requireClientCert);
+
 if (config.nodeEnv !== 'production') {
   app.get('/live-test', (_req, res) => {
     res.sendFile(path.join(__dirname, '..', 'live-test.html'));
@@ -73,7 +81,11 @@ const httpServer = hasTls
       {
         key: fs.readFileSync(keyPath),
         cert: fs.readFileSync(certPath),
-        ...(fs.existsSync(caPath) ? { ca: fs.readFileSync(caPath) } : {}),
+        ca: fs.existsSync(caPath) ? fs.readFileSync(caPath) : undefined,
+        // mTLS: pede certificado ao cliente mas não rejeita automaticamente
+        // (a decisão de acesso é tomada pelo middleware requireClientCert)
+        requestCert: true,
+        rejectUnauthorized: false,
       },
       app,
     )
