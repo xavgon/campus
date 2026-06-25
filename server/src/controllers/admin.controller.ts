@@ -2,6 +2,11 @@ import { Request, Response } from 'express';
 import * as adminService from '../services/admin.service';
 import * as certModel from '../models/cert.model';
 import * as downloadModel from '../models/download.model';
+import {
+  listAllowedClients,
+  allowClient,
+  revokeClient,
+} from '../security/allowedClients';
 import { sendSuccess } from '../utils/apiResponse';
 import { paramString } from '../utils/requestParams';
 
@@ -217,4 +222,37 @@ export const revokeCert = async (req: Request, res: Response): Promise<void> => 
     return;
   }
   sendSuccess(res, { cert }, 'Certificado revogado');
+};
+
+// ── Mecanismo de Excepção — Allowlist (Task 8) ───────────────────────────────
+
+export const getAllowlist = async (_req: Request, res: Response): Promise<void> => {
+  const clients = listAllowedClients();
+  sendSuccess(res, { clients }, 'Lista de excepções (clientes sem certificado)');
+};
+
+export const addToAllowlist = async (req: Request, res: Response): Promise<void> => {
+  const { ip, reason } = req.body as { ip?: string; reason?: string };
+  if (!ip || typeof ip !== 'string') {
+    res.status(400).json({ success: false, message: 'ip é obrigatório', data: null });
+    return;
+  }
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$/;
+  if (!ipRegex.test(ip)) {
+    res.status(400).json({ success: false, message: 'Formato de IP inválido', data: null });
+    return;
+  }
+  allowClient(ip, reason ?? 'Adicionado manualmente pelo administrador');
+  sendSuccess(res, { ip }, 'IP adicionado à lista de excepções', 201);
+};
+
+export const removeFromAllowlist = async (req: Request, res: Response): Promise<void> => {
+  const rawIp = req.params.ip;
+  const ip = Array.isArray(rawIp) ? rawIp[0] : rawIp;
+  const removed = revokeClient(decodeURIComponent(ip));
+  if (!removed) {
+    res.status(404).json({ success: false, message: 'IP não encontrado na allowlist', data: null });
+    return;
+  }
+  sendSuccess(res, { ip }, 'IP removido da lista de excepções');
 };

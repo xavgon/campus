@@ -34,3 +34,8 @@ adminRouter.delete('/certs/:id/revoke', asyncHandler(adminController.revokeCert)
 // Protecção contra Pirataria (Task 5)
 adminRouter.get('/downloads', asyncHandler(adminController.getDownloads));
 adminRouter.get('/piracy-alerts', asyncHandler(adminController.getPiracyAlerts));
+
+// Mecanismo de Excepção — Allowlist (Task 8)
+adminRouter.get('/allowlist', asyncHandler(adminController.getAllowlist));
+adminRouter.post('/allowlist', asyncHandler(adminController.addToAllowlist));
+adminRouter.delete('/allowlist/:ip', asyncHandler(adminController.removeFromAllowlist));
