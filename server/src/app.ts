@@ -28,8 +28,20 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // Task 7 — Mitigação MITM: HSTS força HTTPS em futuros acessos
+    hsts: {
+      maxAge: 31536000,       // 1 ano
+      includeSubDomains: true,
+      preload: true,
+    },
   }),
 );
+
+// Task 7 — Mitigação MITM: cabeçalho personalizado com info do cert do servidor
+app.use((_req, res, next) => {
+  res.setHeader('X-Campus-CA', 'CA-CAMPUS/ISPTEC');
+  next();
+});
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -86,6 +98,15 @@ const httpServer = hasTls
         // (a decisão de acesso é tomada pelo middleware requireClientCert)
         requestCert: true,
         rejectUnauthorized: false,
+        // Task 7 — Mitigação MITM: apenas TLS moderno e cifras fortes
+        minVersion: 'TLSv1.2' as const,
+        ciphers: [
+          'TLS_AES_256_GCM_SHA384',
+          'TLS_CHACHA20_POLY1305_SHA256',
+          'TLS_AES_128_GCM_SHA256',
+          'ECDHE-RSA-AES256-GCM-SHA384',
+          'ECDHE-RSA-AES128-GCM-SHA256',
+        ].join(':'),
       },
       app,
     )
