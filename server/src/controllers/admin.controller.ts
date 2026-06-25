@@ -65,16 +65,13 @@ export const postPodcast = async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  const podcast = await adminService.createPodcast(id, {
-    title: String(req.body.title ?? ''),
-    description: typeof req.body.description === 'string' ? req.body.description : undefined,
-    category_id:
-      req.body.category_id === null || req.body.category_id === ''
-        ? null
-        : Number(req.body.category_id) || undefined,
-    user_id: String(req.body.user_id ?? ''),
-  }, certInfo(req));
-  sendSuccess(res, { podcast }, 'Publicação criada', 201);
+  // Task 9 — Separação de papéis: administradores não podem publicar podcasts.
+  // Publicação é exclusiva do papel 'creator'. O admin gere a plataforma.
+  res.status(403).json({
+    success: false,
+    message: 'Administradores não podem publicar podcasts. Separação de papéis (Task 9): use uma conta de criador.',
+    data: null,
+  });
 };
 
 export const patchPodcast = async (req: Request, res: Response): Promise<void> => {
