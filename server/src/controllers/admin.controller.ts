@@ -4,6 +4,7 @@ import { sendSuccess } from '../utils/apiResponse';
 import { paramString } from '../utils/requestParams';
 
 const actorId = (req: Request): string | undefined => req.user?.userId;
+const certInfo = (req: Request) => req.clientCert ?? null;
 
 export const overview = async (_req: Request, res: Response): Promise<void> => {
   const data = await adminService.getAdminOverview();
@@ -30,7 +31,7 @@ export const patchUser = async (req: Request, res: Response): Promise<void> => {
   const user = await adminService.updateUser(paramString(req.params.id), id, {
     nome: typeof req.body.nome === 'string' ? req.body.nome : undefined,
     role: typeof req.body.role === 'string' ? req.body.role : undefined,
-  });
+  }, certInfo(req));
   sendSuccess(res, { user }, 'Utilizador actualizado');
 };
 
@@ -41,7 +42,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  await adminService.removeUser(paramString(req.params.id), id);
+  await adminService.removeUser(paramString(req.params.id), id, certInfo(req));
   sendSuccess(res, null, 'Utilizador eliminado');
 };
 
@@ -65,7 +66,7 @@ export const postPodcast = async (req: Request, res: Response): Promise<void> =>
         ? null
         : Number(req.body.category_id) || undefined,
     user_id: String(req.body.user_id ?? ''),
-  });
+  }, certInfo(req));
   sendSuccess(res, { podcast }, 'Publicação criada', 201);
 };
 
@@ -96,7 +97,7 @@ export const deletePodcast = async (req: Request, res: Response): Promise<void> 
     return;
   }
 
-  await adminService.removePodcast(paramString(req.params.id), id);
+  await adminService.removePodcast(paramString(req.params.id), id, certInfo(req));
   sendSuccess(res, null, 'Publicação eliminada');
 };
 

@@ -9,8 +9,8 @@ import { getOnlineSnapshot } from './presence.service';
 import type { UserRole } from '../types/roles';
 import { isUserRole } from '../types/roles';
 
-const recordLog = async (actorId: string, action: string) => {
-  await logModel.insertLog(actorId, action);
+const recordLog = async (actorId: string, action: string, certInfo?: logModel.ClientCertInfo | null) => {
+  await logModel.insertLog(actorId, action, certInfo);
 };
 
 export const getAdminOverview = async () => {
@@ -39,6 +39,7 @@ export const updateUser = async (
   targetId: string,
   actorId: string,
   data: { nome?: string; role?: string },
+  certInfo?: logModel.ClientCertInfo | null,
 ) => {
   if (data.role !== undefined && !isUserRole(data.role)) {
     throw new AppError('Papel inválido', 400);
@@ -70,11 +71,11 @@ export const updateUser = async (
     throw new AppError('Nada para actualizar', 400);
   }
 
-  await recordLog(actorId, `Utilizador actualizado: ${updated.email}`);
+  await recordLog(actorId, `Utilizador actualizado: ${updated.email}`, certInfo);
   return updated;
 };
 
-export const removeUser = async (targetId: string, actorId: string) => {
+export const removeUser = async (targetId: string, actorId: string, certInfo?: logModel.ClientCertInfo | null) => {
   if (targetId === actorId) {
     throw new AppError('Não podes eliminar a tua própria conta aqui', 400);
   }
@@ -93,7 +94,7 @@ export const removeUser = async (targetId: string, actorId: string) => {
     throw new AppError('Utilizador não encontrado', 404);
   }
 
-  await recordLog(actorId, `Utilizador eliminado: ${target.email}`);
+  await recordLog(actorId, `Utilizador eliminado: ${target.email}`, certInfo);
 };
 
 export const listPodcasts = () => podcastModel.listPodcastsForAdmin();
@@ -101,6 +102,7 @@ export const listPodcasts = () => podcastModel.listPodcastsForAdmin();
 export const createPodcast = async (
   actorId: string,
   data: { title: string; description?: string; category_id?: number | null; user_id: string },
+  certInfo?: logModel.ClientCertInfo | null,
 ) => {
   if (!data.title.trim()) {
     throw new AppError('Título obrigatório', 400);
@@ -118,7 +120,7 @@ export const createPodcast = async (
     user_id: data.user_id,
   });
 
-  await recordLog(actorId, `Publicação criada: ${podcast.title}`);
+  await recordLog(actorId, `Publicação criada: ${podcast.title}`, certInfo);
   return podcast;
 };
 
@@ -141,14 +143,14 @@ export const updatePodcast = async (
   return updated;
 };
 
-export const removePodcast = async (id: string, actorId: string) => {
+export const removePodcast = async (id: string, actorId: string, certInfo?: logModel.ClientCertInfo | null) => {
   const list = await podcastModel.listPodcastsForAdmin();
   const existing = list.find((p) => p.id === id);
   const removed = await podcastModel.deletePodcastById(id);
   if (!removed) {
     throw new AppError('Publicação não encontrada', 404);
   }
-  await recordLog(actorId, `Publicação eliminada: ${existing?.title ?? id}`);
+  await recordLog(actorId, `Publicação eliminada: ${existing?.title ?? id}`, certInfo);
 };
 
 export const listStreams = () => streamModel.listStreamsForAdmin();

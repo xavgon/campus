@@ -1,17 +1,20 @@
 import { Request, Response } from 'express';
 import * as authService from '../services/auth.service';
+import { insertLog } from '../models/log.model';
 import { sendSuccess } from '../utils/apiResponse';
 import { validateForgotPassword, validateLogin, validateRegister, validateResetPassword, validateUpdatePassword, validateUpdateProfile } from '../validations/auth.validation';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   const input = validateRegister(req.body);
   const result = await authService.register(input.nome, input.email, input.password);
+  await insertLog(result.user.id, `Registo: ${input.email}`, req.clientCert ?? null);
   sendSuccess(res, result, 'Conta criada com sucesso', 201);
 };
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const input = validateLogin(req.body);
   const result = await authService.login(input.email, input.password);
+  await insertLog(result.user.id, `Login: ${input.email}`, req.clientCert ?? null);
   sendSuccess(res, result, 'Login realizado com sucesso');
 };
 

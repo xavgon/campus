@@ -45,12 +45,12 @@ export const requireClientCert = (req: Request, _res: Response, next: NextFuncti
   // Caso 1: certificado válido assinado pela CA com EKU clientAuth
   const hasClientAuth = authorized && cert?.subject?.CN && isClientAuthCert(cert);
   if (hasClientAuth) {
-    (req as Request & { clientCert?: object }).clientCert = {
-      cn: cert.subject.CN,
-      fingerprint: cert.fingerprint256 ?? cert.fingerprint,
-      validFrom: cert.valid_from,
-      validTo: cert.valid_to,
-      issuer: cert.issuer?.CN ?? 'unknown',
+    req.clientCert = {
+      cn: String(cert.subject.CN),
+      fingerprint: String(cert.fingerprint256 ?? cert.fingerprint),
+      validFrom: cert.valid_from ? String(cert.valid_from) : undefined,
+      validTo: cert.valid_to ? String(cert.valid_to) : undefined,
+      issuer: cert.issuer?.CN ? String(cert.issuer.CN) : 'unknown',
     };
     next();
     return;

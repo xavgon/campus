@@ -50,5 +50,19 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER
   `);
 
+  // Task 3 — Não Repúdio: cert do cliente + assinatura digital no log
+  await pool.query(`
+    ALTER TABLE logs
+    ADD COLUMN IF NOT EXISTS cert_fingerprint VARCHAR(120)
+  `);
+  await pool.query(`
+    ALTER TABLE logs
+    ADD COLUMN IF NOT EXISTS cert_cn VARCHAR(200)
+  `);
+  await pool.query(`
+    ALTER TABLE logs
+    ADD COLUMN IF NOT EXISTS signature TEXT
+  `);
+
   await ensureDefaultCategories();
 };
