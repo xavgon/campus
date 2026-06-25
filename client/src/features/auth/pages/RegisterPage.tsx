@@ -10,6 +10,7 @@ import {
   validateRegisterFields,
   type RegisterFieldErrors,
 } from '@/features/auth/utils/register.validation';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Alert } from '@/shared/components/campus/Alert';
 import { AuthPanel } from '@/shared/components/campus/AuthPanel';
 import { Field } from '@/shared/components/campus/Field';
@@ -149,7 +150,7 @@ export const RegisterPage = () => {
           }}
         />
 
-        {error && <Alert title="Não foi possível criar a conta" message={error} />}
+        {error && <Alert title={ERROR_TITLES.register} message={error} />}
 
         <AuthSubmitButton loading={isSubmitting} loadingLabel="A criar conta…" disabled={!canSubmit}>
           Criar conta

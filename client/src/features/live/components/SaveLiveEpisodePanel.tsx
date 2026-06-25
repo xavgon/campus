@@ -14,6 +14,7 @@ import { Alert } from '@/shared/components/campus/Alert';
 import { Field } from '@/shared/components/campus/Field';
 import { TextAreaField } from '@/shared/components/campus/TextAreaField';
 import { getApiErrorMessage } from '@/shared/api/client';
+import { ERROR_TITLES, LIVE_COPY } from '@/shared/copy/campusMessages';
 import { Button } from '@/shared/components/ui/Button';
 
 interface SaveLiveEpisodePanelProps {
@@ -56,11 +57,11 @@ export const SaveLiveEpisodePanel = ({
     if (!title.trim() || isSaving) return;
 
     if (format === 'audio' && !hasAudio) {
-      setError('Não há gravação de áudio disponível.');
+      setError(LIVE_COPY.recordingAudioMissing);
       return;
     }
     if (format === 'audiovideo' && !hasVideo) {
-      setError('Não há gravação de vídeo disponível. Escolhe apenas áudio.');
+      setError(LIVE_COPY.recordingVideoMissing);
       return;
     }
 
@@ -92,7 +93,7 @@ export const SaveLiveEpisodePanel = ({
         </p>
       </div>
 
-      {error && <Alert title="Não foi possível publicar" message={error} />}
+      {error && <Alert title={ERROR_TITLES.livePublishRecording} message={error} />}
 
       <div className="flex flex-col gap-3">
         <span className="text-sm font-medium text-campus-foreground">Formato do episódio</span>

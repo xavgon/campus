@@ -23,5 +23,5 @@ export const errorHandler = (
   }
 
   console.error('[CAMPUS] Erro interno:', err.message);
-  sendError(res, 'Ocorreu um erro interno. Tente novamente mais tarde.', 500);
+  sendError(res, 'O CAMPUS encontrou um problema interno. Tenta outra vez mais tarde.', 500);
 };

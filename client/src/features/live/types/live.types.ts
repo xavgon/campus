@@ -11,6 +11,7 @@ export interface LiveSession {
   listenersCount: number;
   startedAt: string;
   status?: 'live' | 'scheduled' | 'ended';
+  awaitingReconnect?: boolean;
 }
 
 export interface ScheduledStream {
@@ -19,6 +20,7 @@ export interface ScheduledStream {
   description: string | null;
   scheduled_at: string | null;
   host_nome: string | null;
+  media_type: LiveMediaType | null;
 }
 
 export interface LiveJoinedInfo {
@@ -27,4 +29,15 @@ export interface LiveJoinedInfo {
   mediaType: LiveMediaType;
   hostEmail: string;
   startedAt: string;
+}
+
+export interface LiveComment {
+  id: string;
+  streamId: string;
+  userId: string;
+  authorNome: string;
+  authorFoto: string | null;
+  body: string;
+  createdAt: string;
+  isHost: boolean;
 }

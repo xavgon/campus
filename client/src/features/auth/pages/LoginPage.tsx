@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthFormSkeleton } from '@/features/auth/components/AuthFormSkeleton';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
@@ -15,9 +15,13 @@ import { ForgotPasswordModal } from '@/features/auth/components/ForgotPasswordMo
 import { Alert } from '@/shared/components/campus/Alert';
 import { AuthPanel } from '@/shared/components/campus/AuthPanel';
 import { Field } from '@/shared/components/campus/Field';
+import { SuccessNotice } from '@/shared/components/campus/SuccessNotice';
+import { ERROR_TITLES, SESSION_COPY } from '@/shared/copy/campusMessages';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionExpired = (location.state as { reason?: string } | null)?.reason === 'session-expired';
   const { login, isAuthenticated, isLoading } = useAuth();
   const [email, setEmail] = useState(() => {
     const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
@@ -107,6 +111,12 @@ export const LoginPage = () => {
       footerLabel="Criar conta grátis"
     >
       <form onSubmit={onFormSubmit} className="flex flex-col gap-4" noValidate>
+        {sessionExpired && (
+          <SuccessNotice
+            title={SESSION_COPY.expiredTitle}
+            message={SESSION_COPY.expiredBanner}
+          />
+        )}
         <Field
           name="email"
           type="email"
@@ -178,7 +188,7 @@ export const LoginPage = () => {
           </button>
         </div>
 
-        {error && <Alert title="Não foi possível entrar" message={error} />}
+        {error && <Alert title={ERROR_TITLES.login} message={error} />}
 
         <AuthSubmitButton loading={isSubmitting} loadingLabel="A entrar…" disabled={!canSubmit}>
           Entrar

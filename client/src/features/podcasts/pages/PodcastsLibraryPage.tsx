@@ -10,6 +10,7 @@ import { usePodcastCategories } from '@/features/podcasts/hooks/usePodcastCatego
 import { usePodcastsLibrary } from '@/features/podcasts/hooks/usePodcastsLibrary';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Alert } from '@/shared/components/campus/Alert';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -57,7 +58,7 @@ export const PodcastsLibraryPage = () => {
         <ProfileNotice title="Publicado" message={publishNotice} variant="success" />
       )}
 
-      {error && <Alert title="Não foi possível carregar" message={error} />}
+      {error && <Alert title={ERROR_TITLES.load} message={error} />}
 
       {!isEmptyLibrary && <PodcastsStats {...stats} />}
 

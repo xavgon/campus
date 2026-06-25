@@ -19,6 +19,34 @@ const copyTree = (src, dest) => {
   fs.cpSync(src, dest, { recursive: true, force: true });
 };
 
+const applyWindowsIcon = (exePath) => {
+  if (process.platform !== 'win32') return;
+  const iconIco = path.join(clientRoot, 'build-resources', 'icon.ico');
+  if (!fs.existsSync(iconIco)) {
+    console.warn('[electron:pack] icon.ico em falta — corre npm run electron:icon');
+    return;
+  }
+
+  const rceditExe = path.join(
+    clientRoot,
+    'node_modules',
+    'rcedit',
+    'bin',
+    process.arch === 'x64' ? 'rcedit-x64.exe' : 'rcedit.exe',
+  );
+  if (!fs.existsSync(rceditExe)) {
+    console.warn('[electron:pack] rcedit em falta — corre npm install');
+    return;
+  }
+
+  const result = spawnSync(rceditExe, [exePath, '--set-icon', iconIco], { stdio: 'inherit' });
+  if (result.status === 0) {
+    console.log('[electron:pack] Icone aplicado ao executavel.');
+  } else {
+    console.warn('[electron:pack] Nao foi possivel aplicar o icone (rcedit).');
+  }
+};
+
 const main = () => {
   if (!fs.existsSync(path.join(clientRoot, 'dist', 'index.html'))) {
     console.error('[electron:pack] dist/ em falta. Corre npm run build primeiro.');
@@ -47,6 +75,7 @@ const main = () => {
 
   const campusExe = path.join(outDir, 'CAMPUS.exe');
   fs.renameSync(path.join(outDir, 'electron.exe'), campusExe);
+  applyWindowsIcon(campusExe);
 
   const defaultAppAsar = path.join(outDir, 'resources', 'default_app.asar');
   if (fs.existsSync(defaultAppAsar)) {

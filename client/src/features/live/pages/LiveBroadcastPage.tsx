@@ -2,11 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { LIVE_MEDIA_OPTIONS, LIVE_VIDEO_HEIGHT, LIVE_VIDEO_WIDTH } from '@/features/live/constants';
 import { SaveLiveEpisodePanel } from '@/features/live/components/SaveLiveEpisodePanel';
+import { LiveCommentsPanel } from '@/features/live/components/LiveCommentsPanel';
 import { useLiveBroadcast } from '@/features/live/hooks/useLiveBroadcast';
 import { useScheduledStreams } from '@/features/live/hooks/useScheduledStreams';
 import type { LiveMediaType } from '@/features/live/types/live.types';
 import { wantsLiveVideo } from '@/features/live/utils/liveMedia';
 import { Alert } from '@/shared/components/campus/Alert';
+import { ERROR_TITLES, LIVE_COPY } from '@/shared/copy/campusMessages';
 import { Field } from '@/shared/components/campus/Field';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
@@ -27,11 +29,15 @@ export const LiveBroadcastPage = () => {
     startedAtMs,
     previewRef,
     start,
+    resume,
     stop,
     discardRecording,
+    comments,
+    commentError,
+    sendComment,
   } = useLiveBroadcast();
 
-  const isOnAir = phase === 'live' || phase === 'connecting';
+  const isOnAir = phase === 'live' || phase === 'connecting' || phase === 'reconnecting';
   const showStartForm = phase === 'idle' || phase === 'error';
   const showSavePanel = phase === 'ended' && recording != null;
 
@@ -40,7 +46,10 @@ export const LiveBroadcastPage = () => {
   useEffect(() => {
     if (!scheduledId) return;
     const picked = scheduledStreams.find((s) => s.id === scheduledId);
-    if (picked) setTitle(picked.title);
+    if (picked) {
+      setTitle(picked.title);
+      if (picked.media_type) setMediaType(picked.media_type);
+    }
   }, [scheduledId, scheduledStreams]);
 
   const onSubmit = (event: FormEvent) => {
@@ -69,7 +78,7 @@ export const LiveBroadcastPage = () => {
         />
       )}
 
-      {error && <Alert title="Transmissão interrompida" message={error} />}
+      {error && <Alert title={ERROR_TITLES.liveBroadcast} message={error} />}
 
       {showPreview && (
         <div className="campus-panel overflow-hidden p-3">
@@ -163,22 +172,45 @@ export const LiveBroadcastPage = () => {
           </div>
         </form>
       ) : isOnAir ? (
-        <div className="campus-panel space-y-4 p-6">
-          {phase === 'connecting' && (
-            <p className="text-sm text-campus-accent">A ligar ao servidor de transmissão…</p>
-          )}
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={onStop}>
-              Terminar transmissão
-            </Button>
-            {liveId && (
-              <Link to={`/live/${liveId}`}>
-                <Button type="button" variant="ghost">
-                  Abrir como ouvinte
-                </Button>
-              </Link>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="campus-panel space-y-4 p-6">
+            {phase === 'connecting' && (
+              <p className="text-sm text-campus-accent">A ligar ao servidor de transmissão…</p>
             )}
+            {phase === 'reconnecting' && (
+            <Alert
+              title={LIVE_COPY.reconnectBannerTitle}
+              message={LIVE_COPY.reconnectBannerMessage}
+            />
+            )}
+            <div className="flex flex-wrap gap-3">
+              {phase === 'reconnecting' && (
+                <Button type="button" onClick={() => resume()}>
+                  Reconectar agora
+                </Button>
+              )}
+              <Button type="button" variant="outline" onClick={onStop} disabled={phase === 'connecting'}>
+                Terminar transmissão
+              </Button>
+              {liveId && (
+                <Link to={`/live/${liveId}`}>
+                  <Button type="button" variant="ghost">
+                    Abrir como ouvinte
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
+
+          {(phase === 'live' || phase === 'reconnecting') && (
+            <LiveCommentsPanel
+              comments={comments}
+              onSend={sendComment}
+              commentError={commentError}
+              disabled={phase === 'reconnecting'}
+              title="Comentários dos ouvintes"
+            />
+          )}
         </div>
       ) : phase === 'ended' && !recording ? (
         <div className="campus-panel space-y-4 p-6">

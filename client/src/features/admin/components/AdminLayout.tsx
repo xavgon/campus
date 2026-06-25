@@ -1,7 +1,29 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ADMIN_NAV_ITEMS } from '@/features/admin/constants';
+import { AdminNotificationsBell } from '@/features/admin/components/AdminNotificationsBell';
 import { Button } from '@/shared/components/ui/Button';
 import { IS_ELECTRON } from '@/shared/utils/isElectron';
+
+const AdminTopBar = () => (
+  <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p className="text-xs font-bold uppercase tracking-[0.2em] text-campus-primary">
+        Administração
+      </p>
+      <p className="mt-1 text-sm text-campus-accent">
+        Gestão da plataforma CAMPUS — acesso restrito
+      </p>
+    </div>
+    <div className="flex items-center gap-2">
+      <AdminNotificationsBell />
+      <Link to="/dashboard">
+        <Button variant="outline" className="!py-2 text-xs">
+          ← Área pessoal
+        </Button>
+      </Link>
+    </div>
+  </div>
+);
 
 export const AdminLayout = () => {
   const { pathname } = useLocation();
@@ -9,6 +31,7 @@ export const AdminLayout = () => {
   if (IS_ELECTRON) {
     return (
       <div className="campus-page-enter min-w-0">
+        <AdminTopBar />
         <Outlet />
       </div>
     );
@@ -16,21 +39,7 @@ export const AdminLayout = () => {
 
   return (
     <div className="campus-page-enter">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-campus-primary">
-            Administração
-          </p>
-          <p className="mt-1 text-sm text-campus-accent">
-            Gestão da plataforma CAMPUS — acesso restrito
-          </p>
-        </div>
-        <Link to="/dashboard">
-          <Button variant="outline" className="!py-2 text-xs">
-            ← Área pessoal
-          </Button>
-        </Link>
-      </div>
+      <AdminTopBar />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-8">
         <aside className="campus-panel h-fit p-3 sm:p-4">

@@ -54,6 +54,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser((prev) => (prev ? { ...prev, ...updated } : prev));
   }, []);
 
+  const becomeCreator = useCallback(async () => {
+    const response = await authApi.becomeCreator();
+    setToken(response.data.token);
+    setUser(response.data.user);
+  }, []);
+
+  const leaveCreator = useCallback(async () => {
+    const response = await authApi.leaveCreator();
+    setToken(response.data.token);
+    setUser(response.data.user);
+    return response.data.deleted;
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -63,8 +76,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       register,
       logout,
       updateUser,
+      becomeCreator,
+      leaveCreator,
     }),
-    [user, isLoading, login, register, logout, updateUser],
+    [user, isLoading, login, register, logout, updateUser, becomeCreator, leaveCreator],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

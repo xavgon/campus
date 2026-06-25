@@ -117,11 +117,16 @@ const avatarStorage = multer.diskStorage({
 });
 
 const avatarFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
-  if (!IMAGE_MIME_TYPES.has(file.mimetype)) {
-    cb(new AppError('Formato de imagem inválido. Use JPG, PNG ou WebP.'));
+  const mime = file.mimetype.split(';')[0]?.trim().toLowerCase();
+  const ext = path.extname(file.originalname).toLowerCase();
+  const imageExt = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+
+  if (IMAGE_MIME_TYPES.has(mime) || imageExt.has(ext)) {
+    cb(null, true);
     return;
   }
-  cb(null, true);
+
+  cb(new AppError('Formato de imagem inválido. Use JPG, PNG ou WebP.'));
 };
 
 export const uploadAvatar = multer({

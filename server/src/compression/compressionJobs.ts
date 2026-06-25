@@ -1,8 +1,13 @@
 import type { CompressionResult } from '../compression/compress';
 import {
   finalizePodcastCompression,
+  findPodcastById,
   updatePodcastCompressedMedia,
 } from '../models/podcast.model';
+import {
+  notifyPodcastCatalogReady,
+  notifyPodcastCompressionFailed,
+} from '../services/adminNotification.service';
 
 export type CompressionMedia = 'audio' | 'video';
 
@@ -52,6 +57,9 @@ const finalizeFromPending = async (podcastId: string, entry: PendingCompression)
     compressionRatio,
     processingTimeMs,
   );
+
+  const podcast = await findPodcastById(podcastId);
+  if (podcast) void notifyPodcastCatalogReady(podcast);
 };
 
 const completeJob = async (
@@ -92,7 +100,11 @@ const completeJob = async (
 
 const failJob = async (podcastId: string): Promise<void> => {
   const entry = pending.get(podcastId);
-  if (!entry) return;
+  if (!entry) {
+    const podcast = await findPodcastById(podcastId);
+    if (podcast) void notifyPodcastCompressionFailed(podcast);
+    return;
+  }
 
   entry.remaining -= 1;
   if (entry.remaining > 0) {
@@ -101,6 +113,8 @@ const failJob = async (podcastId: string): Promise<void> => {
   }
 
   pending.delete(podcastId);
+  const podcast = await findPodcastById(podcastId);
+  if (podcast) void notifyPodcastCompressionFailed(podcast);
   await finalizeFromPending(podcastId, entry);
 };
 

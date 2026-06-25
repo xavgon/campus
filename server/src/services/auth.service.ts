@@ -6,10 +6,31 @@ import { compressImage } from '../compression/compress';
 import { config } from '../config';
 import { AppError } from '../middleware/errorHandler';
 import { deliverPasswordResetEmail } from '../mail/passwordResetDelivery';
-import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserAvatar, updateUserPassword, updateUserProfile, type PublicUser } from '../models/user.model';
+import { createUser, findUserByEmail, findUserById, mapToPublicUser, updateUserAvatar, updateUserPassword, updateUserProfile, upgradeUserToCreator, downgradeCreatorToUser, type PublicUser } from '../models/user.model';
+import { purgeCreatorContent } from './creatorContent.service';
+import {
+  notifyPasswordResetRequested,
+  notifyUserBecameCreator,
+  notifyUserLeftCreator,
+  notifyUserRegistered,
+} from './adminNotification.service';
 import type { UserRole } from '../types/roles';
 
 const SALT_ROUNDS = 10;
+
+const toPhysicalPath = (relativePath: string): string =>
+  path.join(process.cwd(), relativePath.replace(/^\//, ''));
+
+const toPublicUploadPath = (absolutePath: string): string => {
+  const relative = path.relative(process.cwd(), absolutePath).replace(/\\/g, '/');
+  return relative.startsWith('/') ? relative : `/${relative}`;
+};
+
+const unlinkUpload = (relativePath: string | null | undefined): void => {
+  if (!relativePath) return;
+  const physical = toPhysicalPath(relativePath);
+  if (fs.existsSync(physical)) fs.unlinkSync(physical);
+};
 
 export interface AuthTokenPayload {
   userId: string;
@@ -20,6 +41,10 @@ export interface AuthTokenPayload {
 export interface AuthResult {
   token: string;
   user: PublicUser;
+}
+
+export interface LeaveCreatorResult extends AuthResult {
+  deleted: { podcasts: number; streams: number };
 }
 
 const signToken = (payload: AuthTokenPayload): string =>
@@ -48,6 +73,7 @@ export const register = async (
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
   const user = await createUser(nome, email, passwordHash);
+  void notifyUserRegistered(user);
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
 
   return { token, user };
@@ -88,6 +114,8 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   const user = await findUserByEmail(email);
   if (!user) return; // resposta genérica — não revela se o email existe
 
+  void notifyPasswordResetRequested(user.email);
+
   const payload: ResetTokenPayload = { userId: user.id, type: 'password-reset' };
   const token = jwt.sign(payload, config.jwtSecret, { expiresIn: RESET_TOKEN_EXPIRY });
   const resetLink = `${config.clientUrl}/reset-password?token=${token}`;
@@ -126,16 +154,14 @@ export const updateAvatar = async (userId: string, newFilePath: string): Promise
   const user = await findUserById(userId);
   if (!user) throw new AppError('Utilizador não encontrado', 404);
 
-  // apaga foto anterior se existir
-  if (user.foto_perfil) {
-    const oldPath = path.join(__dirname, '..', '..', user.foto_perfil);
-    if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-  }
+  unlinkUpload(user.foto_perfil);
 
-  // comprimir a nova foto antes de guardar
-  const physicalPath = path.join(process.cwd(), newFilePath);
+  const physicalPath = toPhysicalPath(newFilePath);
+  let storedPath = newFilePath.startsWith('/') ? newFilePath : `/${newFilePath}`;
+
   try {
     const result = await compressImage(physicalPath);
+    storedPath = toPublicUploadPath(result.outputPath);
     console.log(
       `[CAMPUS] Avatar comprimido: ${result.originalSize} → ${result.compressedSize} bytes | ${result.compressionRatio}% redução`,
     );
@@ -144,8 +170,19 @@ export const updateAvatar = async (userId: string, newFilePath: string): Promise
     console.warn(`[CAMPUS] Compressão de avatar falhou (guardado sem compressão): ${msg}`);
   }
 
-  const updated = await updateUserAvatar(userId, newFilePath);
+  const updated = await updateUserAvatar(userId, storedPath);
   if (!updated) throw new AppError('Erro ao actualizar foto', 500);
+  return updated;
+};
+
+export const removeAvatar = async (userId: string): Promise<PublicUser> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  unlinkUpload(user.foto_perfil);
+
+  const updated = await updateUserAvatar(userId, null);
+  if (!updated) throw new AppError('Erro ao remover foto', 500);
   return updated;
 };
 
@@ -174,4 +211,68 @@ export const updatePassword = async (
 
   const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await updateUserPassword(userId, hash);
+};
+
+/** Auto-promoção a criador — apenas contas com papel `user`. Emite novo JWT. */
+export const becomeCreator = async (userId: string): Promise<AuthResult> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  if (user.role === 'admin') {
+    throw new AppError('Conta de administrador já tem permissões de criador', 400);
+  }
+
+  const publicUser =
+    user.role === 'creator' ? mapToPublicUser(user) : await upgradeUserToCreator(userId);
+
+  if (!publicUser) {
+    throw new AppError('Não foi possível activar a conta de criador', 400);
+  }
+
+  const token = signToken({
+    userId: publicUser.id,
+    email: publicUser.email,
+    role: publicUser.role,
+  });
+
+  if (user.role === 'user') {
+    void notifyUserBecameCreator(publicUser);
+  }
+
+  return { token, user: publicUser };
+};
+export const leaveCreator = async (userId: string): Promise<LeaveCreatorResult> => {
+  const user = await findUserById(userId);
+  if (!user) throw new AppError('Utilizador não encontrado', 404);
+
+  if (user.role === 'admin') {
+    throw new AppError('Administradores não podem deixar de ser criadores por esta via', 400);
+  }
+
+  if (user.role === 'user') {
+    const publicUser = mapToPublicUser(user);
+    const token = signToken({
+      userId: publicUser.id,
+      email: publicUser.email,
+      role: publicUser.role,
+    });
+    return { token, user: publicUser, deleted: { podcasts: 0, streams: 0 } };
+  }
+
+  const deleted = await purgeCreatorContent(userId);
+  const publicUser = await downgradeCreatorToUser(userId);
+
+  if (!publicUser) {
+    throw new AppError('Não foi possível actualizar o papel', 400);
+  }
+
+  const token = signToken({
+    userId: publicUser.id,
+    email: publicUser.email,
+    role: publicUser.role,
+  });
+
+  void notifyUserLeftCreator(publicUser, deleted);
+
+  return { token, user: publicUser, deleted };
 };

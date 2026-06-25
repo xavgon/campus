@@ -1,4 +1,5 @@
 import { DEFAULT_ADMIN_EMAIL } from '../database/seedAdmin';
+import { getStreamRuntimeStats } from '../live/live.gateway';
 import { AppError } from '../middleware/errorHandler';
 import * as categoryModel from '../models/category.model';
 import * as logModel from '../models/log.model';
@@ -151,7 +152,36 @@ export const removePodcast = async (id: string, actorId: string) => {
   await recordLog(actorId, `Publicação eliminada: ${existing?.title ?? id}`);
 };
 
-export const listStreams = () => streamModel.listStreamsForAdmin();
+const rejectManualLiveStatus = async (status: string | undefined, streamId?: string) => {
+  if (status !== 'live') return;
+
+  if (streamId) {
+    const existing = await streamModel.findStreamById(streamId);
+    if (existing?.status === 'live') return;
+  }
+
+  throw new AppError(
+    'O estado «em direto» só pode ser activado quando o criador inicia a transmissão.',
+    400,
+  );
+};
+
+export const listStreams = async () => {
+  const [rows, runtime] = await Promise.all([
+    streamModel.listStreamsForAdmin(),
+    Promise.resolve(getStreamRuntimeStats()),
+  ]);
+
+  return rows.map((row) => {
+    const ws = runtime[row.id];
+    return {
+      ...row,
+      listeners_count: ws?.listenersCount ?? 0,
+      ws_connected: ws?.broadcasterConnected ?? false,
+      awaiting_reconnect: ws?.awaitingReconnect ?? false,
+    };
+  });
+};
 
 export const createStream = async (
   actorId: string,
@@ -170,6 +200,7 @@ export const createStream = async (
   if (data.status && !['scheduled', 'live', 'ended'].includes(data.status)) {
     throw new AppError('Estado inválido', 400);
   }
+  await rejectManualLiveStatus(data.status);
 
   if (data.host_user_id) {
     const host = await userModel.findUserById(data.host_user_id);
@@ -179,7 +210,7 @@ export const createStream = async (
   const stream = await streamModel.createStream({
     title: data.title.trim(),
     description: data.description?.trim() ?? null,
-    status: data.status as streamModel.StreamStatus | undefined,
+    status: (data.status as streamModel.StreamStatus | undefined) ?? 'scheduled',
     host_user_id: data.host_user_id ?? null,
     scheduled_at: data.scheduled_at ?? null,
   });
@@ -202,6 +233,7 @@ export const updateStream = async (
   if (data.status && !['scheduled', 'live', 'ended'].includes(data.status)) {
     throw new AppError('Estado inválido', 400);
   }
+  await rejectManualLiveStatus(data.status, id);
 
   if (data.host_user_id) {
     const host = await userModel.findUserById(data.host_user_id);
@@ -240,3 +272,10 @@ export const removeStream = async (id: string, actorId: string) => {
 };
 
 export const listLogs = () => logModel.listLogsForAdmin();
+
+export {
+  getUnreadNotificationCount,
+  listNotificationsForAdmin as listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from './adminNotification.service';

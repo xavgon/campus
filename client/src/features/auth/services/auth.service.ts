@@ -41,6 +41,11 @@ export const uploadAvatar = async (file: File) => {
   return data;
 };
 
+export const removeAvatar = async () => {
+  const { data } = await api.delete<ApiResponse<{ user: User }>>('/auth/profile/photo');
+  return data;
+};
+
 export const updateProfile = async (nome: string) => {
   const { data } = await api.put<ApiResponse<{ user: User }>>('/auth/profile', { nome });
   return data;
@@ -51,5 +56,21 @@ export const updatePassword = async (currentPassword: string, newPassword: strin
     currentPassword,
     newPassword,
   });
+  return data;
+};
+
+export const becomeCreator = async () => {
+  const { data } = await api.post<ApiResponse<AuthPayload>>('/auth/profile/become-creator');
+  return data;
+};
+
+export interface LeaveCreatorResult {
+  token: string;
+  user: User;
+  deleted: { podcasts: number; streams: number };
+}
+
+export const leaveCreator = async () => {
+  const { data } = await api.post<ApiResponse<LeaveCreatorResult>>('/auth/profile/leave-creator');
   return data;
 };

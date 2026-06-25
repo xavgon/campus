@@ -11,12 +11,13 @@ Projeto académico · Multimédia 2026.
 | **Autenticação** | ✅ | Registo, login, JWT, perfil, «esqueci password», reset com token (`/reset-password`) |
 | **Papel criador (RF12)** | ✅ | `role = creator` — publicar podcasts e transmitir ao vivo |
 | **Área autenticada** | ✅ | Dashboard, biblioteca, detalhe, publicar (criadores), perfil |
-| **Podcasts (API)** | ✅ | Listagem com pesquisa/filtros (debounce), upload multipart, download, streaming |
+| **Podcasts (API)** | ✅ | Listagem com pesquisa/filtros (debounce), upload multipart, download, streaming, catálogo público |
+| **Explorar** | ✅ | `/explorar` — catálogo público (`GET /podcasts/public`) sem login |
 | **Presença** | ✅ | Heartbeat + contador de utilizadores ligados no dashboard |
-| **Live (WebSocket)** | 🟡 Passo 1 | Hub `/live`, broadcast e ouvinte via WS `/live` (sessões em memória) |
+| **Live (WebSocket)** | 🟡 Passo 2 | Hub `/live`, broadcast e ouvinte via WS `/live` (sessões em memória) |
 | **Admin** | ✅ | Painel `/admin` — utilizadores, publicações, transmissões (BD), registo |
-| **Electron** | ✅ | Janela frameless, barra de título CAMPUS, arranque em login/dashboard |
-| **FFmpeg / compressão** | ⏳ | Planeado nos módulos 3–4 |
+| **Electron** | ✅ | Janela frameless, barra de título CAMPUS, ícone 256×256, instalador Windows |
+| **FFmpeg / compressão** | ✅ | Compressão áudio/vídeo, progresso real, badges na biblioteca |
 
 > **Nota:** As transmissões do painel admin (`streams` na BD) e as sessões live WebSocket são sistemas distintos — ainda não estão unificados.
 
@@ -86,12 +87,16 @@ npm run dev
 
 ```bash
 cd client
-npm run electron:dev
+npm run electron:dev          # desenvolvimento (Vite + Electron)
+npm run electron:icon         # regenerar ícone 256×256 (PNG + ICO)
+npm run electron:dist         # instalador Windows em release/
 ```
 
 - Usa Vite em `:5173` com `--strictPort` — **não correr** `npm run dev` em paralelo na mesma porta
 - Em Electron, `/` redirecciona para login ou dashboard conforme a sessão
 - Janela sem moldura nativa (`frame: false`) com barra de título personalizada
+- Ícone da app: `build-resources/icon.png` (256×256) + `icon.ico` para Windows
+- **Não versionar** `client/release/` — artefactos de build (ver `.gitignore`); publicar instaladores via GitHub Releases
 
 ## Conta de administrador (desenvolvimento)
 
@@ -106,14 +111,14 @@ npm run electron:dev
 
 Em `import.meta.env.DEV`, o login pré-preenche estas credenciais.
 
-Para testar o papel **criador**, um admin pode atribuir `role = creator` a outra conta em `/admin/users`.
+Para testar o papel **criador**, um utilizador pode activá-lo em **Perfil → Conta de criador**, ou um admin pode atribuir `role = creator` em `/admin/users`.
 
 ## Rotas do frontend
 
 | Rota | Acesso | Descrição |
 |------|--------|-----------|
 | `/` | Público | Home (web) · redirect em Electron |
-| `/explorar` | Público | Explorar |
+| `/explorar` | Público | Catálogo público de episódios comprimidos |
 | `/login`, `/register` | Público | Autenticação |
 | `/reset-password` | Público | Nova password com `?token=` |
 | `/dashboard` | Autenticado | Hub pessoal, stats, episódios recentes, ligados agora |
@@ -138,7 +143,8 @@ Base: `http://localhost:3001/api` · Autenticação: `Authorization: Bearer <tok
 |-------|----------------------|
 | **Health** | `GET /health` |
 | **Auth** | `POST /auth/register`, `/login`, `GET /auth/profile`, `/forgot-password`, `/reset-password` |
-| **Podcasts** | `GET /podcasts`, `GET /podcasts/:id`, `POST /podcasts` (criador), `DELETE /podcasts/:id`, `GET /podcasts/:id/download` |
+| **Podcasts** | `GET /podcasts`, `GET /podcasts/public`, `GET /podcasts/:id`, `POST /podcasts` (criador), `PATCH`/`DELETE`, `GET /podcasts/:id/download`, `GET /podcasts/:id/compression-progress` |
+| **Categorias** | `GET /categories` — público (formulários e explorar) |
 | **Stream** | `GET /stream/:id` — áudio comprimido (token no header ou `?token=`) |
 | **Live** | `GET /live` — sessões WebSocket activas (memória) |
 | **Presença** | `POST /presence/heartbeat`, `/leave`, `GET /presence/online` |
@@ -184,7 +190,8 @@ Desenvolvimento por módulos: seguir `docs/DEVELOPMENT_FLOW.md` no teu ambiente 
 | client | `npm run dev` | Vite (web) |
 | client | `npm run build` | Build produção |
 | client | `npm run electron:dev` | Desktop + Vite (`:5173` fixa) |
-| client | `npm run electron:pack` | Instalador Windows |
+| client | `npm run electron:icon` | Gera ícone PNG 256×256 + ICO |
+| client | `npm run electron:dist` | Instalador Windows (`release/`) |
 
 ## Licença
 

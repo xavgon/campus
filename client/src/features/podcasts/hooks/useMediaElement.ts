@@ -1,4 +1,5 @@
 import { useEffect, useState, type RefObject } from 'react';
+import { MEDIA_COPY } from '@/shared/copy/campusMessages';
 
 export const useMediaElement = (
   mediaRef: RefObject<HTMLMediaElement | null>,
@@ -32,7 +33,7 @@ export const useMediaElement = (
     const onError = () => {
       setIsLoading(false);
       setIsPlaying(false);
-      setError('Não foi possível reproduzir o ficheiro. Tenta novamente mais tarde.');
+      setError(MEDIA_COPY.playbackFailed);
     };
 
     media.addEventListener('loadedmetadata', onLoadedMetadata);
@@ -76,7 +77,7 @@ export const useMediaElement = (
       media.pause();
     } else {
       void media.play().catch(() => {
-        setError('Reprodução bloqueada pelo browser. Clica em Play para iniciar.');
+        setError(MEDIA_COPY.autoplayBlocked);
       });
     }
   };

@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 import { LiveSessionCard } from '@/features/live/components/LiveSessionCard';
 import { useActiveLives } from '@/features/live/hooks/useActiveLives';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Alert } from '@/shared/components/campus/Alert';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
 import { Button } from '@/shared/components/ui/Button';
@@ -32,7 +33,7 @@ export const LiveHubPage = () => {
         </div>
       </div>
 
-      {error && <Alert title="Não foi possível carregar" message={error} />}
+      {error && <Alert title={ERROR_TITLES.load} message={error} />}
 
       {isLoading && (
         <div className="campus-panel p-8 text-center text-sm text-campus-muted">A procurar transmissões…</div>

@@ -27,6 +27,7 @@ import {
   type Podcast,
 } from '../models/podcast.model';
 import type { CreatePodcastInput, UpdatePodcastInput } from '../validations/podcast.validation';
+import { notifyPodcastPublished } from './adminNotification.service';
 
 export const getPodcasts = async (opts?: {
   search?: string;
@@ -114,6 +115,8 @@ export const createPodcast = async (
     const physicalCoverPath = path.join(process.cwd(), `/uploads/covers/${files.cover.filename}`);
     void runImageCompression('capa', physicalCoverPath);
   }
+
+  void notifyPodcastPublished(podcast);
 
   return podcast;
 };

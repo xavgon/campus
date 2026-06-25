@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
-import { uploadAvatar, updatePassword, updateProfile } from '@/features/auth/services/auth.service';
+import { uploadAvatar, removeAvatar, updatePassword, updateProfile } from '@/features/auth/services/auth.service';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
+import { ProfileCreatorSection } from '@/features/profile/components/ProfileCreatorSection';
+import { ProfilePhotoPicker } from '@/features/profile/components/ProfilePhotoPicker';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { formatMemberSince } from '@/features/profile/utils/formatMemberSince';
@@ -17,13 +18,14 @@ import { PageHeader } from '@/shared/components/campus/PageHeader';
 import { Alert } from '@/shared/components/campus/Alert';
 import { Field } from '@/shared/components/campus/Field';
 import { getApiErrorMessage } from '@/shared/api/client';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Button } from '@/shared/components/ui/Button';
 
 export const ProfilePage = () => {
-  const { user, logout, updateUser } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, logout, updateUser, becomeCreator, leaveCreator } = useAuth();
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
 
   const [nome, setNome] = useState('');
   const [nameErrors, setNameErrors] = useState<ProfileNameErrors>({});
@@ -55,6 +57,8 @@ export const ProfilePage = () => {
 
   const memberSince = formatMemberSince(user.created_at);
   const nomeChanged = nome.trim() !== user.nome;
+  const roleLabel =
+    user.role === 'admin' ? 'Administrador' : user.role === 'creator' ? 'Criador' : 'Utilizador';
 
   const onNameSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -82,19 +86,36 @@ export const ProfilePage = () => {
     }
   };
 
-  const onAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const onAvatarSelect = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('A imagem não pode ultrapassar 5 MB.');
+      return;
+    }
+
     setAvatarError(null);
     setAvatarLoading(true);
     try {
       const result = await uploadAvatar(file);
       updateUser({ foto_perfil: result.data.user.foto_perfil });
+      setAvatarVersion((v) => v + 1);
     } catch (err) {
       setAvatarError(getApiErrorMessage(err));
     } finally {
       setAvatarLoading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const onAvatarRemove = async () => {
+    setAvatarError(null);
+    setAvatarLoading(true);
+    try {
+      const result = await removeAvatar();
+      updateUser({ foto_perfil: result.data.user.foto_perfil });
+      setAvatarVersion((v) => v + 1);
+    } catch (err) {
+      setAvatarError(getApiErrorMessage(err));
+    } finally {
+      setAvatarLoading(false);
     }
   };
 
@@ -132,8 +153,16 @@ export const ProfilePage = () => {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,17rem)_1fr] lg:gap-8">
         <aside className="campus-panel flex flex-col items-center p-6 text-center sm:p-8 lg:items-stretch lg:text-left">
           <div className="mx-auto lg:mx-0">
-            <ProfileAvatar nome={user.nome} fotoUrl={user.foto_perfil} />
+            <ProfilePhotoPicker
+              nome={user.nome}
+              fotoUrl={user.foto_perfil}
+              cacheKey={avatarVersion}
+              loading={avatarLoading}
+              onSelect={(file) => void onAvatarSelect(file)}
+              onRemove={() => void onAvatarRemove()}
+            />
           </div>
+          {avatarError && <p className="mt-2 text-xs text-campus-danger">{avatarError}</p>}
           <h2 className="mt-5 text-xl font-bold text-campus-foreground">{user.nome}</h2>
           <p className="mt-1 break-all text-sm text-campus-accent">{user.email}</p>
           <dl className="mt-6 w-full space-y-3 border-t border-campus-border/60 pt-5 text-left text-sm">
@@ -142,31 +171,16 @@ export const ProfilePage = () => {
               <dd className="text-right font-medium text-campus-foreground">{memberSince}</dd>
             </div>
             <div className="flex justify-between gap-3">
+              <dt className="text-campus-muted">Papel</dt>
+              <dd className="text-right font-medium text-campus-foreground">{roleLabel}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
               <dt className="text-campus-muted">ID</dt>
               <dd className="truncate font-mono text-xs text-campus-accent" title={user.id}>
                 {user.id.slice(0, 8)}…
               </dd>
             </div>
           </dl>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={onAvatarChange}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            fullWidth
-            className="mt-6"
-            disabled={avatarLoading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {avatarLoading ? 'A enviar…' : 'Alterar foto'}
-          </Button>
-          {avatarError && <p className="mt-2 text-xs text-campus-danger">{avatarError}</p>}
-          <p className="mt-2 text-xs text-campus-muted">JPG, PNG ou WebP · máx. 5 MB</p>
         </aside>
 
         <div className="space-y-6">
@@ -175,7 +189,7 @@ export const ProfilePage = () => {
             description="O teu nome aparece no dashboard e nos episódios que publicares."
           >
             <form className="space-y-5" onSubmit={onNameSubmit} noValidate>
-              {nameError && <Alert title="Erro ao guardar" message={nameError} />}
+              {nameError && <Alert title={ERROR_TITLES.profile} message={nameError} />}
               {nameNotice && (
                 <ProfileNotice
                   title="Informação"
@@ -223,12 +237,18 @@ export const ProfilePage = () => {
             </form>
           </ProfileSection>
 
+          <ProfileCreatorSection
+            user={user}
+            onBecomeCreator={becomeCreator}
+            onLeaveCreator={leaveCreator}
+          />
+
           <ProfileSection
             title="Segurança"
             description="Mantém a tua conta protegida com uma password forte."
           >
             <form className="space-y-5" onSubmit={onPasswordSubmit} noValidate>
-              {passwordError && <Alert title="Erro ao alterar password" message={passwordError} />}
+              {passwordError && <Alert title={ERROR_TITLES.password} message={passwordError} />}
               {passwordNotice && (
                 <ProfileNotice title="Informação" message={passwordNotice} variant="success" />
               )}

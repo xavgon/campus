@@ -28,6 +28,11 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     description: 'Emissões ao vivo e agendadas',
   },
   {
+    to: '/admin/notifications',
+    label: 'Notificações',
+    description: 'Alertas importantes da plataforma',
+  },
+  {
     to: '/admin/logs',
     label: 'Registo',
     description: 'Histórico de acções administrativas',

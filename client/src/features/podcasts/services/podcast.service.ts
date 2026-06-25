@@ -43,6 +43,20 @@ export const fetchPodcasts = async (params: FetchPodcastsParams = {}): Promise<P
   return data.data.podcasts.map(mapPodcastFromApi);
 };
 
+export const fetchPublicPodcasts = async (
+  params: FetchPodcastsParams = {},
+): Promise<Podcast[]> => {
+  const query: Record<string, string> = {};
+  if (params.search?.trim()) query.search = params.search.trim();
+  if (params.categoryId) query.category_id = params.categoryId;
+
+  const { data } = await api.get<ApiResponse<{ podcasts: PodcastApi[] }>>('/podcasts/public', {
+    params: query,
+  });
+
+  return data.data.podcasts.map(mapPodcastFromApi);
+};
+
 export const fetchPodcastById = async (id: string): Promise<Podcast> => {
   const { data } = await api.get<ApiResponse<{ podcast: PodcastApi }>>(`/podcasts/${id}`);
   return mapPodcastFromApi(data.data.podcast);

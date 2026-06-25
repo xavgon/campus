@@ -29,7 +29,7 @@ export const LiveSessionCard = ({ session }: LiveSessionCardProps) => (
           Em direto
         </span>
         <h3 className="mt-2 truncate text-lg font-bold text-campus-foreground">{session.title}</h3>
-        <p className="mt-1 text-sm text-campus-accent">{session.hostEmail}</p>
+        <p className="mt-1 text-sm text-campus-accent">{session.hostNome ?? session.hostEmail}</p>
       </div>
       <span className="shrink-0 text-xs text-campus-muted">{formatLiveDuration(session.startedAt)}</span>
     </div>

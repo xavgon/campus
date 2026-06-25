@@ -1,10 +1,12 @@
-import { SERVER_URL } from '@/shared/api/client';
 import { getInitials } from '@/features/profile/utils/formatMemberSince';
+import { resolveMediaUrl } from '@/shared/utils/resolveMediaUrl';
 
 interface ProfileAvatarProps {
   nome: string;
   fotoUrl?: string | null;
   size?: 'sm' | 'md' | 'lg';
+  /** Quebra cache após novo upload */
+  cacheKey?: string | number;
 }
 
 const sizeClasses = {
@@ -19,12 +21,12 @@ const borderClasses = {
   lg: 'border-2 border-campus-primary/50 shadow-lg shadow-black/50',
 } as const;
 
-export const ProfileAvatar = ({ nome, fotoUrl, size = 'lg' }: ProfileAvatarProps) => {
+export const ProfileAvatar = ({ nome, fotoUrl, size = 'lg', cacheKey }: ProfileAvatarProps) => {
   const sizeClass = sizeClasses[size];
   const borderClass = borderClasses[size];
+  const src = resolveMediaUrl(fotoUrl, cacheKey);
 
-  if (fotoUrl) {
-    const src = fotoUrl.startsWith('http') ? fotoUrl : `${SERVER_URL}/${fotoUrl}`;
+  if (src) {
     return (
       <img
         src={src}

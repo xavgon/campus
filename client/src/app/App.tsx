@@ -15,6 +15,7 @@ import { PodcastDetailPage } from '@/pages/podcasts/PodcastDetailPage';
 import { PodcastsPage } from '@/pages/podcasts/PodcastsPage';
 import {
   AdminLogsPage,
+  AdminNotificationsPage,
   AdminOverviewPage,
   AdminPostsPage,
   AdminTransmissionsPage,
@@ -29,6 +30,8 @@ import { MarketingLayout } from '@/shared/layouts/MarketingLayout';
 import { ElectronShell } from '@/shared/layouts/ElectronShell';
 import { IS_ELECTRON } from '@/shared/utils/isElectron';
 import { ElectronRootRedirect } from '@/app/ElectronRootRedirect';
+import { ApiBootstrap } from '@/app/ApiBootstrap';
+import { ApiToastProvider } from '@/shared/context/ApiToastContext';
 
 const AppRoutes = () => (
   <Routes>
@@ -60,6 +63,7 @@ const AppRoutes = () => (
             <Route path="/admin/users" element={<AdminUsersPage />} />
             <Route path="/admin/posts" element={<AdminPostsPage />} />
             <Route path="/admin/transmissions" element={<AdminTransmissionsPage />} />
+            <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
             <Route path="/admin/logs" element={<AdminLogsPage />} />
           </Route>
         </Route>
@@ -74,15 +78,18 @@ const AppRouter = IS_ELECTRON ? HashRouter : BrowserRouter;
 
 const App = () => (
   <AuthProvider>
-    <AppRouter>
-      {IS_ELECTRON ? (
-        <ElectronShell>
+    <ApiToastProvider>
+      <AppRouter>
+        <ApiBootstrap />
+        {IS_ELECTRON ? (
+          <ElectronShell>
+            <AppRoutes />
+          </ElectronShell>
+        ) : (
           <AppRoutes />
-        </ElectronShell>
-      ) : (
-        <AppRoutes />
-      )}
-    </AppRouter>
+        )}
+      </AppRouter>
+    </ApiToastProvider>
   </AuthProvider>
 );
 

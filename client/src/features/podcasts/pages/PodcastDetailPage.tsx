@@ -27,6 +27,7 @@ import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { Alert } from '@/shared/components/campus/Alert';
 import { Modal } from '@/shared/components/campus/Modal';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
+import { ERROR_TITLES, EMPTY_STATE_COPY } from '@/shared/copy/campusMessages';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -123,7 +124,7 @@ export const PodcastDetailPage = () => {
   if (!id) {
     return (
       <div className="campus-page-enter">
-        <Alert title="Episódio inválido" message="Identificador em falta." />
+        <Alert title={ERROR_TITLES.podcastInvalid} message={EMPTY_STATE_COPY.podcastInvalidId} />
       </div>
     );
   }
@@ -141,7 +142,10 @@ export const PodcastDetailPage = () => {
   if (error || !podcast) {
     return (
       <div className="campus-page-enter space-y-6">
-        <Alert title="Episódio não encontrado" message={error ?? 'Não foi possível carregar o episódio.'} />
+        <Alert
+          title={ERROR_TITLES.podcastNotFound}
+          message={error ?? EMPTY_STATE_COPY.podcastLoadFailed}
+        />
         <Link to="/podcasts">
           <Button variant="outline">← Voltar à biblioteca</Button>
         </Link>
@@ -276,7 +280,7 @@ export const PodcastDetailPage = () => {
                   </p>
                 )}
               </div>
-              {downloadError && <Alert title="Download falhou" message={downloadError} />}
+              {downloadError && <Alert title={ERROR_TITLES.download} message={downloadError} />}
             </div>
           ) : (
             <ProfileNotice
@@ -305,7 +309,7 @@ export const PodcastDetailPage = () => {
           <p className="text-sm text-campus-accent">
             Tens a certeza que queres eliminar <strong className="text-campus-foreground">{podcast.title}</strong>?
           </p>
-          {deleteError && <Alert title="Não foi possível eliminar" message={deleteError} />}
+          {deleteError && <Alert title={ERROR_TITLES.delete} message={deleteError} />}
           <div className="flex flex-wrap justify-end gap-3">
             <Button
               type="button"

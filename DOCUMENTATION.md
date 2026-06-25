@@ -54,8 +54,14 @@ Configuração em `server/src/config/cors.ts`:
 | POST | `/auth/register` | — | Criar conta |
 | POST | `/auth/login` | — | Login → `{ token, user }` |
 | GET | `/auth/profile` | Bearer | Perfil do utilizador autenticado |
+| PUT | `/auth/profile` | Bearer | Actualizar nome |
+| PUT | `/auth/profile/photo` | Bearer | Upload foto (`multipart`, campo `photo`, máx. 5 MB) |
+| DELETE | `/auth/profile/photo` | Bearer | Remover foto de perfil |
+| PUT | `/auth/password` | Bearer | Alterar password |
 | POST | `/auth/forgot-password` | — | Gera token de reset (em dev, link no log do servidor) |
 | POST | `/auth/reset-password` | — | `{ token, newPassword }` — define nova password |
+| POST | `/auth/profile/become-creator` | Bearer | Auto-promoção a `creator` (só papel `user`; devolve novo JWT) |
+| POST | `/auth/profile/leave-creator` | Bearer | Abandona `creator` → `user`; apaga podcasts e transmissões do utilizador |
 
 Resposta de sucesso: `{ success, message, data }`.
 
@@ -67,13 +73,22 @@ O link de reset aponta para `{CLIENT_URL}/reset-password?token=…`.
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| GET | `/podcasts` | Bearer | Listagem — query `search`, `category_id` |
+| GET | `/podcasts/public` | — | Catálogo público — episódios com compressão concluída; query `search`, `category_id` |
+| GET | `/podcasts` | Bearer | Listagem completa (área autenticada) — query `search`, `category_id` |
 | GET | `/podcasts/:id` | Bearer | Detalhe de um episódio |
-| POST | `/podcasts` | Bearer + criador | Upload multipart (áudio + capa opcional) |
+| POST | `/podcasts` | Bearer + criador | Upload multipart (áudio, vídeo e capa opcionais) |
+| PATCH | `/podcasts/:id` | Bearer | Editar metadados (dono ou admin) |
 | DELETE | `/podcasts/:id` | Bearer | Dono do podcast ou admin |
 | GET | `/podcasts/:id/download` | Bearer | Download do ficheiro de áudio |
+| GET | `/podcasts/:id/compression-progress` | Bearer | Progresso FFmpeg em tempo real (`audio` / `video`) |
 
 Ficheiros servidos em `/uploads/…` (estático no Express).
+
+### Categorias (público)
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | `/categories` | — | Lista categorias para explorar e formulários |
 
 ---
 
@@ -165,6 +180,10 @@ Todas as rotas exigem **Bearer token** + `role = admin`.
 | GET | `/admin/overview` | Métricas: users, podcasts, streams, online, live |
 | GET | `/admin/categories` | Lista categorias para formulários |
 | GET | `/admin/logs` | Últimas acções administrativas |
+| GET | `/admin/notifications` | Alertas da plataforma (`?unread=1`, `?limit=30`) |
+| GET | `/admin/notifications/unread-count` | Contador de notificações por ler |
+| POST | `/admin/notifications/read-all` | Marcar todas como lidas |
+| PATCH | `/admin/notifications/:id/read` | Marcar uma notificação como lida |
 | GET | `/admin/users` | Listar utilizadores |
 | PATCH | `/admin/users/:id` | `{ nome?, role? }` — papéis: `user`, `creator`, `admin` |
 | DELETE | `/admin/users/:id` | Eliminar conta |
@@ -178,6 +197,8 @@ Todas as rotas exigem **Bearer token** + `role = admin`.
 | DELETE | `/admin/streams/:id` | Eliminar |
 
 Acções de escrita registam entrada em `logs` (ex.: «Publicação criada: …»).
+
+**Notificações** (`admin_notifications`) — eventos automáticos para o admin: novo registo, criador activado/desactivado, episódio publicado/comprimido, live iniciada, pedido de reset de password. UI: sino no painel admin + página `/admin/notifications`.
 
 ### Regras de negócio (admin)
 
@@ -251,6 +272,8 @@ Seed idempotente em `ensureSchemaPatches`: Educação geral, Ciências, Históri
 - `ElectronRootRedirect` — `/` → `/login` ou `/dashboard`.
 - Menu nativo oculto em produção; em dev, menu mínimo (Alt para revelar).
 - `electron:dev` — Vite `:5173` `--strictPort` + Electron.
+- **Ícone:** `build-resources/icon.png` (256×256) + `icon.ico`; cópia runtime em `electron/icon.png`. Regenerar com `npm run electron:icon` (`scripts/generate-electron-icon.py`, requer Pillow).
+- **Build Windows:** `electron:pack` (portable) / `electron:dist` (NSIS). Output em `client/release/` — **não versionar** no Git (limite 100 MB do GitHub).
 
 ---
 
@@ -280,21 +303,26 @@ A URL WebSocket é derivada de `VITE_API_URL` (`http` → `ws`, sem `/api`).
 
 | Módulo | Backend | Frontend |
 |--------|---------|----------|
-| 3 Compressão | FFmpeg, estados de processamento | Badges na biblioteca |
-| 4 Streaming | Melhorias CDN/range | Player avançado (seek, mini-player) |
+| 3 Compressão | FFmpeg, progresso, `processing_time_ms` | Badges e painel no detalhe |
+| 4 Streaming | Vídeo + áudio (`/stream/:id/video`) | Players custom na biblioteca |
 | 6 Perfil | `PUT` perfil/password | Gravar forms do perfil |
-| Reset email | SMTP real (hoje: log em dev) | ✅ rota `/reset-password` |
+| Reset email | SMTP (`server/src/mail/`) | ✅ rota `/reset-password` |
+| Explorar | `GET /podcasts/public` | ✅ `/explorar` com catálogo real |
 | Live Passo 2 | Unificar com `streams` na BD | Mensagens de erro mais claras |
-| Electron | Ícone `.ico` para installer | Smoke test de build |
+| Electron | Ícone ICO + empacotamento | Smoke test de build |
 
 ---
 
 ## Changelog recente (resumo)
 
+- Catálogo público — `GET /api/podcasts/public` + página `/explorar`.
+- Compressão FFmpeg — progresso real, badges, AAC/OGG, `processing_time_ms`.
+- Ícone Electron 256×256 — `build-resources/icon.png` + `icon.ico`, script `npm run electron:icon`.
+- SMTP — emails de reset password com template CAMPUS.
 - Papel `creator` (RF12) — publicar podcasts e transmitir ao vivo.
 - Reset password — `POST /auth/reset-password` + página `/reset-password`.
 - Biblioteca de podcasts ligada à API com pesquisa debounced (RF09).
-- Upload multipart e streaming de áudio (`/api/podcasts`, `/api/stream/:id`).
+- Upload multipart e streaming (`/api/podcasts`, `/api/stream/:id`).
 - Live WebSocket — gateway, REST `GET /api/live`, UI hub/broadcast/watch.
 - CORS em dev — qualquer porta localhost (corrige login quando Vite usa 5174).
 - Electron — janela frameless, barra de título CAMPUS, redirect na raiz.

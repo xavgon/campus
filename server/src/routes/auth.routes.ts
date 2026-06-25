@@ -13,4 +13,7 @@ authRouter.post('/reset-password', asyncHandler(authController.resetPassword));
 authRouter.get('/profile', requireAuth, asyncHandler(authController.getProfile));
 authRouter.put('/profile', requireAuth, asyncHandler(authController.updateProfile));
 authRouter.put('/profile/photo', requireAuth, uploadAvatar, asyncHandler(authController.updateAvatar));
+authRouter.delete('/profile/photo', requireAuth, asyncHandler(authController.deleteAvatar));
+authRouter.post('/profile/become-creator', requireAuth, asyncHandler(authController.becomeCreator));
+authRouter.post('/profile/leave-creator', requireAuth, asyncHandler(authController.leaveCreator));
 authRouter.put('/password', requireAuth, asyncHandler(authController.updatePassword));

@@ -37,3 +37,9 @@ export const LIVE_MEDIA_OPTIONS: { value: LiveMediaType; label: string }[] = [
 ];
 
 export const LIVE_POLL_INTERVAL_MS = 5000;
+
+/** Reentrada automática quando o anfitrião ou o servidor ainda não está pronto */
+export const LIVE_LISTENER_RETRY_MS = 2500;
+export const LIVE_LISTENER_MAX_RETRIES = 12;
+
+export const LIVE_COMMENT_MAX_LENGTH = 500;

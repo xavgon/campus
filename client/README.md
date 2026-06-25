@@ -30,8 +30,11 @@ A URL WebSocket live é derivada automaticamente (`http` → `ws`, sem sufixo `/
 | `npm run preview` | Pré-visualizar build |
 | `npm run lint` | ESLint |
 | `npm run electron:dev` | Vite `:5173` fixa + Electron — **não** correr `dev` em paralelo |
+| `npm run electron:icon` | Gera `build-resources/icon.png` (256×256) e `icon.ico` |
 | `npm run electron:build` | Build web + Electron |
-| `npm run electron:pack` | Instalador Windows (`release/`) |
+| `npm run electron:pack` | App portable (`release/win-unpacked/`) |
+| `npm run electron:dist` | Portable + instalador NSIS (`release/`) |
+| `npm run electron:smoke` | Build + empacotamento portable + teste de arranque da UI |
 
 ## Rotas
 
@@ -40,7 +43,7 @@ A URL WebSocket live é derivada automaticamente (`http` → `ws`, sem sufixo `/
 | Rota | Página |
 |------|--------|
 | `/` | Home (web) · redirect em Electron |
-| `/explorar` | Explorar |
+| `/explorar` | Catálogo público (API `/podcasts/public`) |
 | `/login` | Login |
 | `/register` | Registo |
 | `/reset-password` | Nova password (`?token=`) |
@@ -99,9 +102,25 @@ Ficheiros em `electron/`:
 
 | Ficheiro | Função |
 |----------|--------|
-| `main.cjs` | Janela frameless, IPC controlos, guards de navegação |
+| `main.cjs` | Janela frameless, ícone, IPC controlos, guards de navegação |
 | `preload.cjs` | Bridge segura (`window.campusDesktop`) |
 | `menu.cjs` | Menu oculto (prod) / mínimo (dev, Alt) |
+| `icon.png` | Cópia runtime do ícone (256×256) — gerada por `npm run electron:icon` |
+
+Ícones de build em `build-resources/`:
+
+| Ficheiro | Uso |
+|----------|-----|
+| `icon.png` | Master 256×256 (emblema amarelo + «C») |
+| `icon.ico` | Windows — taskbar, executável e instalador NSIS |
+
+Regenerar após alterar a marca:
+
+```bash
+npm run electron:icon
+```
+
+O script `scripts/generate-electron-icon.py` requer **Pillow** (`pip install pillow`). O empacotamento manual aplica o `.ico` ao `CAMPUS.exe` via `rcedit`.
 
 Comportamento desktop:
 

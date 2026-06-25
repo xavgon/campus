@@ -3,6 +3,7 @@ import type { ApiResponse } from '@/shared/types';
 import type {
   AdminCategory,
   AdminLogRow,
+  AdminNotification,
   AdminOverview,
   AdminPodcastRow,
   AdminStreamRow,
@@ -24,6 +25,35 @@ export const fetchAdminCategories = async (): Promise<AdminCategory[]> => {
 export const fetchAdminLogs = async (): Promise<AdminLogRow[]> => {
   const { data } = await api.get<ApiResponse<{ logs: AdminLogRow[] }>>('/admin/logs');
   return data.data.logs;
+};
+
+export const fetchAdminNotifications = async (opts?: {
+  limit?: number;
+  unreadOnly?: boolean;
+}): Promise<AdminNotification[]> => {
+  const params: Record<string, string | number> = {};
+  if (opts?.limit) params.limit = opts.limit;
+  if (opts?.unreadOnly) params.unread = '1';
+
+  const { data } = await api.get<ApiResponse<{ notifications: AdminNotification[] }>>(
+    '/admin/notifications',
+    { params },
+  );
+  return data.data.notifications;
+};
+
+export const fetchAdminUnreadCount = async (): Promise<number> => {
+  const { data } = await api.get<ApiResponse<{ count: number }>>('/admin/notifications/unread-count');
+  return data.data.count;
+};
+
+export const markAdminNotificationRead = async (id: number): Promise<void> => {
+  await api.patch(`/admin/notifications/${id}/read`);
+};
+
+export const markAllAdminNotificationsRead = async (): Promise<number> => {
+  const { data } = await api.post<ApiResponse<{ count: number }>>('/admin/notifications/read-all');
+  return data.data.count;
 };
 
 export const fetchAdminUsers = async (): Promise<AdminUserRow[]> => {

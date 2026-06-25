@@ -22,6 +22,7 @@ import { PageHeader } from '@/shared/components/campus/PageHeader';
 import { Alert } from '@/shared/components/campus/Alert';
 import { Field } from '@/shared/components/campus/Field';
 import { TextAreaField } from '@/shared/components/campus/TextAreaField';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -110,9 +111,9 @@ export const PublishPage = () => {
       />
 
       <form className="space-y-6" onSubmit={onSubmit} noValidate>
-        {submitError && <Alert title="Erro ao publicar" message={submitError} />}
+        {submitError && <Alert title={ERROR_TITLES.publish} message={submitError} />}
         {categoriesError && (
-          <Alert title="Categorias indisponíveis" message={categoriesError} />
+          <Alert title={ERROR_TITLES.categories} message={categoriesError} />
         )}
         {notice && (
           <ProfileNotice title="Quase lá" message={notice} variant="success" />

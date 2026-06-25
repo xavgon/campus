@@ -11,6 +11,7 @@ import {
 import type { AdminUserRow } from '@/features/admin/types/admin.types';
 import { formatAdminDate } from '@/features/admin/utils/formatAdminDate';
 import type { UserRole } from '@/features/auth/types/auth.types';
+import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
 import { Field } from '@/shared/components/campus/Field';
 import { Modal } from '@/shared/components/campus/Modal';
 import { getApiErrorMessage } from '@/shared/api/client';
@@ -110,6 +111,13 @@ export const AdminUsersPage = () => {
         getRowKey={(row) => row.id}
         emptyMessage="Nenhum utilizador na base de dados."
         columns={[
+          {
+            key: 'foto',
+            header: 'Foto',
+            render: (row) => (
+              <ProfileAvatar nome={row.nome} fotoUrl={row.foto_perfil} size="sm" />
+            ),
+          },
           {
             key: 'nome',
             header: 'Nome',

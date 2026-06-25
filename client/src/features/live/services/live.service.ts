@@ -1,4 +1,4 @@
-import type { LiveSession, ScheduledStream } from '@/features/live/types/live.types';
+import type { LiveComment, LiveSession, ScheduledStream } from '@/features/live/types/live.types';
 import { api, SERVER_URL } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types';
 import { getToken } from '@/shared/utils/storage';
@@ -13,6 +13,22 @@ export const fetchScheduledStreams = async (): Promise<ScheduledStream[]> => {
     '/live/scheduled',
   );
   return data.data.streams;
+};
+
+export const fetchLiveComments = async (streamId: string): Promise<LiveComment[]> => {
+  const { data } = await api.get<ApiResponse<{ comments: LiveComment[]; total: number }>>(
+    `/live/${streamId}/comments`,
+  );
+  return data.data.comments.map((row) => ({
+    id: row.id,
+    streamId: row.streamId ?? streamId,
+    userId: row.userId,
+    authorNome: row.authorNome,
+    authorFoto: row.authorFoto ?? null,
+    body: row.body,
+    createdAt: row.createdAt,
+    isHost: row.isHost === true,
+  }));
 };
 
 export const buildLiveWebSocketUrl = (params: {

@@ -8,6 +8,7 @@ import { SuccessNotice } from '@/shared/components/campus/SuccessNotice';
 import { Field } from '@/shared/components/campus/Field';
 import { Button } from '@/shared/components/ui/Button';
 import { getApiErrorMessage } from '@/shared/api/client';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 
 interface ForgotPasswordModalProps {
   open: boolean;
@@ -92,7 +93,7 @@ export const ForgotPasswordModal = ({ open, onClose, initialEmail = '' }: Forgot
             onBlur={() => setFieldError(validateForgotPasswordEmail(email))}
           />
 
-          {error && <Alert title="Não foi possível enviar" message={error} />}
+          {error && <Alert title={ERROR_TITLES.forgotPassword} message={error} />}
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" fullWidth className="sm:w-auto" onClick={handleClose}>

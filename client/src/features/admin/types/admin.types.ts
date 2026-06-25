@@ -12,6 +12,7 @@ export interface AdminUserRow {
   id: string;
   nome: string;
   email: string;
+  foto_perfil: string | null;
   role: UserRole;
   created_at: string;
 }
@@ -43,6 +44,21 @@ export interface AdminLogRow {
   created_at: string;
 }
 
+export type AdminNotificationSeverity = 'info' | 'success' | 'warning';
+
+export interface AdminNotification {
+  id: number;
+  type: string;
+  severity: AdminNotificationSeverity;
+  title: string;
+  message: string;
+  actor_user_id: string | null;
+  actor_nome: string | null;
+  target_href: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface AdminStreamRow {
   id: string;
   title: string;
@@ -54,4 +70,7 @@ export interface AdminStreamRow {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  listeners_count?: number;
+  ws_connected?: boolean;
+  awaiting_reconnect?: boolean;
 }

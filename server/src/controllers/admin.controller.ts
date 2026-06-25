@@ -170,3 +170,35 @@ export const getLogs = async (_req: Request, res: Response): Promise<void> => {
   const logs = await adminService.listLogs();
   sendSuccess(res, { logs }, 'Registo de actividade');
 };
+
+export const getNotifications = async (req: Request, res: Response): Promise<void> => {
+  const unreadOnly = req.query.unread === '1' || req.query.unread === 'true';
+  const rawLimit = req.query.limit;
+  const limit = typeof rawLimit === 'string' ? Number(rawLimit) : 30;
+
+  const notifications = await adminService.listNotifications({
+    limit: Number.isFinite(limit) ? limit : 30,
+    unreadOnly,
+  });
+  sendSuccess(res, { notifications }, 'Notificações');
+};
+
+export const getNotificationUnreadCount = async (_req: Request, res: Response): Promise<void> => {
+  const count = await adminService.getUnreadNotificationCount();
+  sendSuccess(res, { count }, 'Notificações por ler');
+};
+
+export const patchNotificationRead = async (req: Request, res: Response): Promise<void> => {
+  const id = Number(paramString(req.params.id));
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ success: false, message: 'ID inválido', data: null });
+    return;
+  }
+  await adminService.markNotificationRead(id);
+  sendSuccess(res, null, 'Notificação marcada como lida');
+};
+
+export const postNotificationsReadAll = async (_req: Request, res: Response): Promise<void> => {
+  const count = await adminService.markAllNotificationsRead();
+  sendSuccess(res, { count }, 'Todas as notificações foram marcadas como lidas');
+};

@@ -24,6 +24,7 @@ export interface AdminUserListItem {
   id: string;
   nome: string;
   email: string;
+  foto_perfil: string | null;
   role: UserRole;
   created_at: string;
 }
@@ -41,7 +42,11 @@ const toPublicUser = (row: UserRow): PublicUser => ({
   id: row.id,
   nome: row.nome,
   email: row.email,
-  foto_perfil: row.foto_perfil,
+  foto_perfil: row.foto_perfil
+    ? row.foto_perfil.startsWith('/') || row.foto_perfil.startsWith('http')
+      ? row.foto_perfil
+      : `/${row.foto_perfil}`
+    : null,
   role: row.role ?? 'user',
   created_at: row.created_at.toISOString(),
 });
@@ -79,7 +84,7 @@ export const createUser = async (
 
 export const listUsersForAdmin = async (): Promise<AdminUserListItem[]> => {
   const result = await getPool().query<AdminUserListRow>(
-    `SELECT id, nome, email, role, created_at
+    `SELECT id, nome, email, foto_perfil, role, created_at
      FROM users
      ORDER BY created_at DESC`,
   );
@@ -118,7 +123,7 @@ export const updateUserByAdmin = async (
   const result = await getPool().query<AdminUserListRow>(
     `UPDATE users SET ${fields.join(', ')}
      WHERE id = $${index}
-     RETURNING id, nome, email, role, created_at`,
+     RETURNING id, nome, email, foto_perfil, role, created_at`,
     values,
   );
   const row = result.rows[0];
@@ -148,7 +153,7 @@ export const updateUserProfile = async (
 
 export const updateUserAvatar = async (
   id: string,
-  fotoPerfil: string,
+  fotoPerfil: string | null,
 ): Promise<PublicUser | null> => {
   const result = await getPool().query<UserRow>(
     `UPDATE users SET foto_perfil = $1 WHERE id = $2 RETURNING ${USER_COLUMNS}`,
@@ -167,6 +172,34 @@ export const updateUserPassword = async (
     [passwordHash, id],
   );
   return (result.rowCount ?? 0) > 0;
+};
+
+/** Promove utilizador normal a criador (idempotente se já for criador). */
+export const upgradeUserToCreator = async (id: string): Promise<PublicUser | null> => {
+  const result = await getPool().query<UserRow>(
+    `UPDATE users SET role = 'creator' WHERE id = $1 AND role = 'user' RETURNING ${USER_COLUMNS}`,
+    [id],
+  );
+  if (result.rows[0]) return toPublicUser(result.rows[0]);
+
+  const existing = await findUserById(id);
+  if (!existing) return null;
+  if (existing.role === 'creator') return toPublicUser(existing);
+  return null;
+};
+
+/** Rebaixa criador a utilizador normal (idempotente se já for user). */
+export const downgradeCreatorToUser = async (id: string): Promise<PublicUser | null> => {
+  const result = await getPool().query<UserRow>(
+    `UPDATE users SET role = 'user' WHERE id = $1 AND role = 'creator' RETURNING ${USER_COLUMNS}`,
+    [id],
+  );
+  if (result.rows[0]) return toPublicUser(result.rows[0]);
+
+  const existing = await findUserById(id);
+  if (!existing) return null;
+  if (existing.role === 'user') return toPublicUser(existing);
+  return null;
 };
 
 export const mapToPublicUser = toPublicUser;

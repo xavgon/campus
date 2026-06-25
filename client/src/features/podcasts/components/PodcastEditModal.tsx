@@ -12,6 +12,7 @@ import { Field } from '@/shared/components/campus/Field';
 import { Modal } from '@/shared/components/campus/Modal';
 import { TextAreaField } from '@/shared/components/campus/TextAreaField';
 import { getApiErrorMessage } from '@/shared/api/client';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Button } from '@/shared/components/ui/Button';
 
 interface PodcastEditModalProps {
@@ -70,7 +71,7 @@ export const PodcastEditModal = ({ open, podcast, onClose, onSaved }: PodcastEdi
       description="Actualiza o título, descrição ou categoria. Os ficheiros de áudio/vídeo não podem ser alterados aqui."
     >
       <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
-        {error && <Alert title="Não foi possível guardar" message={error} />}
+        {error && <Alert title={ERROR_TITLES.save} message={error} />}
 
         <Field
           label="Título"

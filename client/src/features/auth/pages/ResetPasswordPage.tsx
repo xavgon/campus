@@ -11,6 +11,7 @@ import {
   validateResetPasswordFields,
   type ResetPasswordFieldErrors,
 } from '@/features/auth/utils/resetPassword.validation';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Alert } from '@/shared/components/campus/Alert';
 import { AuthPanel } from '@/shared/components/campus/AuthPanel';
 import { Field } from '@/shared/components/campus/Field';
@@ -146,7 +147,7 @@ export const ResetPasswordPage = () => {
           }}
         />
 
-        {error && <Alert title="Não foi possível redefinir" message={error} />}
+        {error && <Alert title={ERROR_TITLES.resetPassword} message={error} />}
 
         <AuthSubmitButton loading={isSubmitting} loadingLabel="A guardar…">
           Redefinir password

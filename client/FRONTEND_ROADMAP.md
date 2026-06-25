@@ -22,13 +22,14 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 | **Papel criador (RF12)** | Nav condicional, publicar e broadcast só para `creator`/`admin` |
 | **Nav autenticada** | `CampusNav`, indicador deslizante, `NavBrand`, `NavUserMenu`, item «Ao vivo» |
 | **Dashboard** | Boas-vindas, stats, episódios recentes, ligados agora, atalhos admin e live |
-| **Podcasts** | Biblioteca API, pesquisa debounced (RF09), filtros, detalhe, player, download |
+| **Podcasts** | Biblioteca API, pesquisa debounced (RF09), filtros, detalhe, player, download, compressão |
+| **Explorar** | Catálogo público (`/explorar`) — `GET /podcasts/public`, cards sem preview |
 | **Publicar** | Upload multipart real, dropzones, categoria «Outros», validação |
 | **Perfil** | Layout, avatar, forms nome/password (gravação API Módulo 6 pendente) |
 | **Presença** | `usePresenceSession` + painel de utilizadores ligados |
 | **Live (Passo 1)** | Hub, broadcast (MediaDevices + WS), watch (listener WS) |
 | **Admin** | `/admin` — utilizadores (com papel criador), publicações, transmissões, registo |
-| **Electron** | Frameless, barra de título, redirect `/`, menu oculto em prod |
+| **Electron** | Frameless, barra de título, redirect `/`, menu oculto em prod, ícone 256×256 |
 | **Dev UX** | Credenciais admin pré-preenchidas em `import.meta.env.DEV` |
 
 ### Rotas existentes
@@ -36,7 +37,7 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 | Rota | Página | Layout / guarda |
 |------|--------|-------------------|
 | `/` | Home / redirect Electron | Marketing |
-| `/explorar` | Explorar | Marketing |
+| `/explorar` | Catálogo público | Marketing (full-width) |
 | `/login` | Login | Marketing |
 | `/register` | Registo | Marketing |
 | `/reset-password` | Nova password | Marketing |
@@ -60,9 +61,10 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 - [ ] **Gravar perfil** quando API Módulo 6 existir (`PUT` perfil/password)
 - [ ] **Unificar** admin `streams` (BD) com sessões live WebSocket
 - [ ] Mensagens de erro live mais claras («transmissão já não está activa»)
-- [ ] Tratamento global de erros API (401 → logout, toast reutilizável)
+- [x] Tratamento global de erros API (401 → logout, toast reutilizável)
 - [ ] Testes (Vitest + Testing Library)
-- [ ] Ícone `.ico` e smoke test do build Electron
+- [x] Ícone Electron 256×256 + `.ico` para Windows
+- [x] Smoke test do build Electron (`npm run electron:smoke`)
 
 ---
 
@@ -100,7 +102,7 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 ### Por concluir
 
 - [ ] Refresh de perfil após editar (Módulo 6)
-- [ ] Mensagens HTTP → copy PT centralizadas
+- [x] Mensagens HTTP → copy PT centralizadas (`shared/copy/campusMessages.ts`)
 - [ ] Envio real de email (SMTP)
 
 ---
@@ -118,10 +120,10 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ### Por concluir
 
-- [ ] Editar/eliminar episódio pelo próprio utilizador (UI)
+- [x] Editar/eliminar episódio pelo próprio utilizador (UI)
 - [ ] Progress bar de upload mais visível
 - [ ] Paginação ou infinite scroll
-- [ ] Badges de compressão (Módulo 3)
+- [x] Badges de compressão (Módulo 3)
 
 ---
 
@@ -145,7 +147,7 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 ---
 
-## Fase 2d — Live WebSocket 🟡 (Passo 1)
+## Fase 2d — Live WebSocket ✅ (Passo 2)
 
 ### Feito
 
@@ -155,20 +157,24 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 - [x] Watch `/live/:id` — listener WS
 - [x] Nav «Ao vivo» e atalho no dashboard
 - [x] Restrição de broadcast a criadores
+- [x] Ligar broadcast à tabela `streams` (agendada → em direto na BD)
+- [x] `GET /api/live/scheduled` — transmissões agendadas do criador
+- [x] Reconexão do anfitrião (30 s de tolerância + `resume` WS)
+- [x] Ouvinte: retry automático e estado «anfitrião a reconectar»
+- [x] Admin: ouvintes WS, ligação activa, sem «em direto» manual
+- [x] Gravação local pós-live + publicar como episódio
 
-### Por concluir (Passo 2)
+### Por concluir
 
-- [ ] Ligar criação de transmissão à tabela `streams`
-- [ ] Estados UX: reconexão, sessão expirada, sem broadcaster
-- [ ] Gravação ou VOD pós-live
+- [ ] VOD automático no servidor (gravação FFmpeg já existe no gateway)
 
 ---
 
 ## Fase 3 — Compressão (feedback na UI)
 
-- [ ] Badge por podcast: pendente / a processar / concluído / falhou
-- [ ] Polling ou SSE para %
-- [ ] Métricas original vs. comprimido no detalhe
+- [x] Badge por podcast: pendente / a processar / concluído
+- [x] Polling de progresso FFmpeg no detalhe
+- [x] Métricas original vs. comprimido no detalhe
 
 ---
 
@@ -203,7 +209,7 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 ### Por concluir
 
 - [ ] `PUT` perfil e password no servidor
-- [ ] Upload avatar
+- [x] Upload avatar (perfil + navegação)
 - [ ] Logs do próprio utilizador (se exposto pela API)
 
 ---
@@ -212,10 +218,11 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 
 - [x] README do client actualizado
 - [x] Electron dev (frameless, title bar, redirect)
+- [x] Ícone 256×256 + `icon.ico` (`npm run electron:icon`)
 - [ ] Responsivo 360 / 768 / 1280 (revisão final)
 - [ ] Testes E2E (login, upload, play, live)
 - [ ] Testes unitários (validações, hooks)
-- [ ] Build Electron smoke test + ícone installer
+- [x] Build Electron smoke test (`npm run electron:smoke` — portable + arranque UI)
 
 ---
 
@@ -262,7 +269,7 @@ client/src/
 ## Prioridades recomendadas
 
 1. **Perfil API** — `PUT` perfil e password (Módulo 6)  
-2. **Live Passo 2** — unificar com `streams` do admin  
+2. ~~**Live Passo 2** — unificar com `streams` do admin~~ ✅  
 3. **Compressão UI** — badges quando FFmpeg estiver activo  
 4. **Player** — componente reutilizável com seek/volume  
 5. **Testes** — login + publicar + live smoke  

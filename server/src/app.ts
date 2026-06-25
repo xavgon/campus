@@ -33,7 +33,7 @@ app.use(
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
-  message: { success: false, message: 'Demasiadas tentativas. Tenta novamente em 15 minutos.' },
+  message: { success: false, message: 'Muitas tentativas seguidas. Aguarda 15 minutos e tenta de novo.' },
   standardHeaders: true,
   legacyHeaders: false,
 });

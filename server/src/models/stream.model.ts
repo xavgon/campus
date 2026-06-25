@@ -84,7 +84,8 @@ export const listLiveStreams = async (): Promise<StreamRow[]> => {
 export const listScheduledStreamsForHost = async (hostUserId: string): Promise<StreamRow[]> => {
   const result = await getPool().query(
     `SELECT ${STREAM_SELECT} ${STREAM_FROM}
-     WHERE s.host_user_id = $1 AND s.status = 'scheduled'
+     WHERE s.status = 'scheduled'
+       AND (s.host_user_id = $1 OR s.host_user_id IS NULL)
      ORDER BY s.scheduled_at ASC NULLS LAST, s.created_at ASC`,
     [hostUserId],
   );
@@ -210,6 +211,11 @@ export const updateStream = async (
 export const deleteStreamById = async (id: string): Promise<boolean> => {
   const result = await getPool().query('DELETE FROM streams WHERE id = $1', [id]);
   return (result.rowCount ?? 0) > 0;
+};
+
+export const deleteStreamsByHostUserId = async (hostUserId: string): Promise<number> => {
+  const result = await getPool().query('DELETE FROM streams WHERE host_user_id = $1', [hostUserId]);
+  return result.rowCount ?? 0;
 };
 
 /** Marca transmissões «live» órfãs (ex.: após reinício do servidor). */

@@ -21,7 +21,12 @@ import { TextAreaField } from '@/shared/components/campus/TextAreaField';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
-const STATUS_OPTIONS: StreamStatus[] = ['scheduled', 'live', 'ended'];
+const CREATE_STATUS: StreamStatus = 'scheduled';
+
+const editableStatuses = (current: StreamStatus): StreamStatus[] => {
+  if (current === 'live') return ['live'];
+  return ['scheduled', 'ended'];
+};
 
 export const AdminTransmissionsPage = () => {
   const { users } = useAdminLookups();
@@ -33,7 +38,7 @@ export const AdminTransmissionsPage = () => {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<StreamStatus>('scheduled');
+  const [status, setStatus] = useState<StreamStatus>(CREATE_STATUS);
   const [hostId, setHostId] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
 
@@ -86,7 +91,7 @@ export const AdminTransmissionsPage = () => {
       setNotice('Transmissão criada.');
       setTitle('');
       setDescription('');
-      setStatus('scheduled');
+      setStatus(CREATE_STATUS);
       setHostId('');
       setScheduledAt('');
     } catch (err) {
@@ -163,7 +168,7 @@ export const AdminTransmissionsPage = () => {
       <AdminPageHeader
         eyebrow="Transmissões"
         title="Gestão de emissões"
-        description="Agenda transmissões, define anfitrião e estado (agendada, em direto, terminada). O streaming de vídeo/áudio liga-se num módulo futuro."
+        description="Agenda transmissões e define anfitrião. O estado «em direto» activa-se automaticamente quando o criador inicia o broadcast."
       />
 
       <AdminFeedback notice={notice} error={error} />
@@ -184,18 +189,10 @@ export const AdminTransmissionsPage = () => {
             required
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-campus-foreground">Estado</label>
-            <select
-              className={adminSelectClass}
-              value={status}
-              onChange={(e) => setStatus(e.target.value as StreamStatus)}
-            >
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {streamStatusLabel(s)}
-                </option>
-              ))}
-            </select>
+            <label className="text-sm font-medium text-campus-foreground">Estado inicial</label>
+            <p className="rounded-none border border-campus-border bg-campus-surface-elevated px-4 py-3 text-sm text-campus-muted">
+              Agendada — passa a «em direto» quando o anfitrião transmitir em /live/broadcast
+            </p>
           </div>
         </div>
         <TextAreaField
@@ -257,19 +254,42 @@ export const AdminTransmissionsPage = () => {
           {
             key: 'status',
             header: 'Estado',
+            render: (row) =>
+              row.status === 'live' ? (
+                <div className="space-y-1">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.1em] text-red-400">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" aria-hidden />
+                    {streamStatusLabel('live')}
+                  </span>
+                  {row.awaiting_reconnect && (
+                    <p className="text-[10px] text-campus-muted">Anfitrião a reconectar…</p>
+                  )}
+                  {row.ws_connected === false && !row.awaiting_reconnect && (
+                    <p className="text-[10px] text-campus-muted">Sem ligação WS</p>
+                  )}
+                </div>
+              ) : (
+                <select
+                  className={adminSelectClass}
+                  value={row.status}
+                  disabled={busyId === row.id}
+                  onChange={(e) => void onQuickStatus(row, e.target.value as StreamStatus)}
+                >
+                  {editableStatuses(row.status).map((s) => (
+                    <option key={s} value={s}>
+                      {streamStatusLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              ),
+          },
+          {
+            key: 'listeners',
+            header: 'Ouvintes',
             render: (row) => (
-              <select
-                className={adminSelectClass}
-                value={row.status}
-                disabled={busyId === row.id}
-                onChange={(e) => void onQuickStatus(row, e.target.value as StreamStatus)}
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {streamStatusLabel(s)}
-                  </option>
-                ))}
-              </select>
+              <span className="text-xs text-campus-muted">
+                {row.status === 'live' ? (row.listeners_count ?? 0) : '—'}
+              </span>
             ),
           },
           {
@@ -334,17 +354,21 @@ export const AdminTransmissionsPage = () => {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-campus-foreground">Estado</label>
-              <select
-                className={adminSelectClass}
-                value={editStatus}
-                onChange={(e) => setEditStatus(e.target.value as StreamStatus)}
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {streamStatusLabel(s)}
-                  </option>
-                ))}
-              </select>
+              {editing?.status === 'live' ? (
+                <p className="text-sm text-red-400">{streamStatusLabel('live')} (automático)</p>
+              ) : (
+                <select
+                  className={adminSelectClass}
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as StreamStatus)}
+                >
+                  {editableStatuses(editStatus).map((s) => (
+                    <option key={s} value={s}>
+                      {streamStatusLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-campus-foreground">Anfitrião</label>

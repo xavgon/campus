@@ -6,7 +6,9 @@ import { AppError } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireCreator } from '../middleware/requireCreator';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { listScheduledStreamsForHost } from '../models/stream.model';
+import { listScheduledStreamsForHost, findStreamById } from '../models/stream.model';
+import { listLiveCommentsForStream } from '../models/liveComment.model';
+import { toCommentWire } from '../live/live.comments';
 import { sendSuccess } from '../utils/apiResponse';
 
 export const liveRouter = Router();
@@ -32,6 +34,24 @@ liveRouter.get(
 
     const streams = await listScheduledStreamsForHost(userId);
     sendSuccess(res, { streams, total: streams.length });
+  }),
+);
+
+// GET /api/live/:streamId/comments — histórico de comentários da transmissão
+liveRouter.get(
+  '/:streamId/comments',
+  requireAuth,
+  asyncHandler(async (req: Request, res: Response) => {
+    const streamId = req.params.streamId as string;
+    const stream = await findStreamById(streamId);
+    if (!stream) throw new AppError('Transmissão não encontrada', 404);
+
+    const comments = await listLiveCommentsForStream(streamId);
+    const hostId = stream.host_user_id ?? '';
+    sendSuccess(res, {
+      comments: comments.map((row) => toCommentWire(row, hostId)),
+      total: comments.length,
+    });
   }),
 );
 

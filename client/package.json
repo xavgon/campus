@@ -14,14 +14,17 @@
     "electron:dev": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://localhost:5173 && node ./scripts/launch-electron-dev.cjs\"",
     "electron:defender": "node ./scripts/add-defender-exclusion.cjs",
     "electron:clean": "node ./scripts/clean-electron-release.cjs",
+    "electron:icon": "python scripts/generate-electron-icon.py",
     "electron:portable": "npm run build && node ./scripts/electron-pack-manual.cjs",
     "electron:build": "npm run build && electron .",
     "electron:pack": "npm run build && node ./scripts/electron-dist.cjs --dir",
-    "electron:dist": "npm run build && node ./scripts/electron-dist.cjs"
+    "electron:dist": "npm run build && node ./scripts/electron-dist.cjs",
+    "electron:smoke": "npm run build && node ./scripts/electron-pack-manual.cjs && node ./scripts/electron-smoke-test.cjs"
   },
   "build": {
     "appId": "co.ao.campus.app",
     "productName": "CAMPUS",
+    "icon": "build-resources/icon.png",
     "directories": {
       "output": "release",
       "buildResources": "build-resources"
@@ -35,7 +38,10 @@
       "cache": ".electron-cache"
     },
     "win": {
-      "target": ["nsis"],
+      "icon": "build-resources/icon.ico",
+      "target": [
+        "nsis"
+      ],
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -63,6 +69,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "rcedit": "^5.0.2",
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",

@@ -12,9 +12,11 @@ const {
 registerCampusScheme();
 
 const isDev = !app.isPackaged;
-const useViteDev = isDev && process.env.ELECTRON_VITE_DEV === '1';
+const isSmokeTest = process.argv.includes('--smoke-test');
+const useViteDev = isDev && process.env.ELECTRON_VITE_DEV === '1' && !isSmokeTest;
 const DEV_URL = 'http://localhost:5173';
 const preloadPath = path.join(__dirname, 'preload.cjs');
+const iconPath = path.join(__dirname, 'icon.png');
 const distIndexPath = path.join(resolveDistRoot(), 'index.html');
 const debugDesktop = process.env.CAMPUS_DEBUG === '1';
 
@@ -63,6 +65,7 @@ const createWindow = () => {
     minWidth: 960,
     minHeight: 640,
     title: 'CAMPUS',
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     show: false,
     frame: false,
     backgroundColor: '#080808',
@@ -130,6 +133,19 @@ const createWindow = () => {
     mainWindow?.show();
   });
 
+  if (isSmokeTest) {
+    const smokeTimeout = setTimeout(() => {
+      console.error('CAMPUS_SMOKE_TIMEOUT');
+      app.exit(1);
+    }, 25_000);
+
+    mainWindow.webContents.once('did-finish-load', () => {
+      clearTimeout(smokeTimeout);
+      console.log('CAMPUS_SMOKE_OK');
+      app.exit(0);
+    });
+  }
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -137,10 +153,30 @@ const createWindow = () => {
 
 registerWindowControls();
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (isSmokeTest) {
+  app.disableHardwareAcceleration();
+}
+
+const gotSingleInstanceLock = isSmokeTest ? true : app.requestSingleInstanceLock();
 
 if (!gotSingleInstanceLock) {
   app.quit();
+} else if (isSmokeTest) {
+  app.whenReady().then(async () => {
+    if (!useViteDev) {
+      await installCampusProtocol();
+    }
+
+    session.defaultSession.setCertificateVerifyProc((request, callback) => {
+      const host = request.hostname ?? '';
+      if (host === 'localhost' || host === '127.0.0.1') {
+        callback(0);
+        return;
+      }
+      callback(-3);
+    });
+    createWindow();
+  });
 } else {
   app.on('second-instance', () => {
     if (!mainWindow) return;

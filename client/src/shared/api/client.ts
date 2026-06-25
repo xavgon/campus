@@ -1,5 +1,7 @@
 import axios from 'axios';
 import type { ApiResponse } from '@/shared/types';
+import { dispatchApiEvent } from '@/shared/api/apiEvents';
+import { isPublicAuthUrl } from '@/shared/api/apiErrors';
 import { IS_ELECTRON } from '@/shared/utils/isElectron';
 import { clearToken, getToken } from '@/shared/utils/storage';
 
@@ -30,6 +32,7 @@ export const SERVER_URL =
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 60_000,
 });
 
 api.interceptors.request.use((config) => {
@@ -43,9 +46,19 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      clearToken();
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const requestUrl = error.config?.url ?? '';
+      const hadToken = !!getToken();
+
+      if (status === 401 && hadToken && !isPublicAuthUrl(requestUrl)) {
+        clearToken();
+        dispatchApiEvent('session-expired');
+      } else if (status === 401 && hadToken) {
+        clearToken();
+      }
     }
+
     return Promise.reject(error);
   },
 );
@@ -57,14 +70,5 @@ export const fetchHealth = async () => {
   return data;
 };
 
-export const getApiErrorMessage = (error: unknown): string => {
-  if (axios.isAxiosError(error)) {
-    if (!error.response) {
-      return 'Não foi possível ligar à API. Confirma que o servidor está a correr (cd server && npm run dev). Em dev usa VITE_API_URL=/api; com HTTPS directo usa https://localhost:3001/api.';
-    }
-    if (error.response.data?.message) {
-      return String(error.response.data.message);
-    }
-  }
-  return 'Ocorreu um erro. Tente novamente.';
-};
+export { getApiErrorMessage, showApiErrorToast, showApiToast } from '@/shared/api/apiErrors';
+export { humanizeServerMessage, ERROR_TITLES } from '@/shared/copy/campusMessages';

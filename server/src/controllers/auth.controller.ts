@@ -37,9 +37,19 @@ export const updateAvatar = async (req: Request, res: Response): Promise<void> =
     res.status(400).json({ success: false, message: 'Nenhuma imagem enviada', data: null });
     return;
   }
-  const filePath = `uploads/avatars/${req.file.filename}`;
+  const filePath = `/uploads/avatars/${req.file.filename}`;
   const user = await authService.updateAvatar(userId, filePath);
   sendSuccess(res, { user }, 'Foto de perfil actualizada com sucesso');
+};
+
+export const deleteAvatar = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const user = await authService.removeAvatar(userId);
+  sendSuccess(res, { user }, 'Foto de perfil removida com sucesso');
 };
 
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
@@ -72,4 +82,29 @@ export const updatePassword = async (req: Request, res: Response): Promise<void>
   const { currentPassword, newPassword } = validateUpdatePassword(req.body);
   await authService.updatePassword(userId, currentPassword, newPassword);
   sendSuccess(res, null, 'Password alterada com sucesso');
+};
+
+export const becomeCreator = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const result = await authService.becomeCreator(userId);
+  sendSuccess(res, result, 'Conta de criador activada com sucesso');
+};
+
+export const leaveCreator = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  if (!userId) {
+    res.status(401).json({ success: false, message: 'Autenticação necessária', data: null });
+    return;
+  }
+  const result = await authService.leaveCreator(userId);
+  const { deleted } = result;
+  const summary =
+    deleted.podcasts + deleted.streams > 0
+      ? `Conta de criador encerrada. Foram eliminados ${deleted.podcasts} episódio(s) e ${deleted.streams} transmissão(ões).`
+      : 'Conta de criador encerrada com sucesso.';
+  sendSuccess(res, result, summary);
 };

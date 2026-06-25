@@ -185,6 +185,26 @@ export const deletePodcastAndReturnPath = async (
   return { audio_url: row.audio_url, video_url: row.video_url, cover_url: row.cover_url };
 };
 
+export interface PodcastMediaRow {
+  id: string;
+  audio_url: string | null;
+  video_url: string | null;
+  cover_url: string | null;
+}
+
+export const listPodcastMediaByUserId = async (userId: string): Promise<PodcastMediaRow[]> => {
+  const result = await getPool().query<PodcastMediaRow>(
+    'SELECT id, audio_url, video_url, cover_url FROM podcasts WHERE user_id = $1',
+    [userId],
+  );
+  return result.rows;
+};
+
+export const deletePodcastsByUserId = async (userId: string): Promise<number> => {
+  const result = await getPool().query('DELETE FROM podcasts WHERE user_id = $1', [userId]);
+  return result.rowCount ?? 0;
+};
+
 export interface AdminPodcastListItem {
   id: string;
   title: string;

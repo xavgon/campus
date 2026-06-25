@@ -12,6 +12,11 @@ adminRouter.get('/overview', asyncHandler(adminController.overview));
 adminRouter.get('/categories', asyncHandler(adminController.getCategories));
 adminRouter.get('/logs', asyncHandler(adminController.getLogs));
 
+adminRouter.get('/notifications', asyncHandler(adminController.getNotifications));
+adminRouter.get('/notifications/unread-count', asyncHandler(adminController.getNotificationUnreadCount));
+adminRouter.post('/notifications/read-all', asyncHandler(adminController.postNotificationsReadAll));
+adminRouter.patch('/notifications/:id/read', asyncHandler(adminController.patchNotificationRead));
+
 adminRouter.get('/users', asyncHandler(adminController.getUsers));
 adminRouter.patch('/users/:id', asyncHandler(adminController.patchUser));
 adminRouter.delete('/users/:id', asyncHandler(adminController.deleteUser));
