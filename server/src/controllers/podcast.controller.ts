@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import fs from 'fs';
 import { AppError } from '../middleware/errorHandler';
 import * as podcastService from '../services/podcast.service';
+import { recordDownload } from '../models/download.model';
 import { sendSuccess } from '../utils/apiResponse';
 import {
   validateCreatePodcast,
@@ -37,8 +38,17 @@ export const getCompressionProgress = async (req: Request, res: Response): Promi
 // ─── GET /api/podcasts/:id/download ───────────────────────────────────────────
 
 export const download = async (req: Request, res: Response): Promise<void> => {
-  const { filePath, downloadName, contentType } = await podcastService.getPodcastDownload(
-    req.params.id as string,
+  const podcastId = req.params.id as string;
+  const { filePath, downloadName, contentType } = await podcastService.getPodcastDownload(podcastId);
+
+  // Task 5 — Protecção contra pirataria: registar identidade do dispositivo que descarregou
+  const ip = (req.ip ?? req.socket?.remoteAddress ?? '').replace(/^::ffff:/, '');
+  await recordDownload(
+    podcastId,
+    req.user?.userId ?? null,
+    req.clientCert?.fingerprint ?? null,
+    req.clientCert?.cn ?? null,
+    ip || null,
   );
 
   const stat = fs.statSync(filePath);
@@ -71,7 +81,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     cover: multerFiles?.['cover']?.[0],
   };
 
-  const podcast = await podcastService.createPodcast(input, userId, files);
+  const podcast = await podcastService.createPodcast(input, userId, files, req.clientCert ?? null);
   sendSuccess(res, { podcast }, 'Podcast publicado com sucesso', 201);
 };
 

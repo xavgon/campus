@@ -50,44 +50,62 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER
   `);
 
+  // Task 4 — Gestão de certificados pela CA: registo de certs emitidos e revogados
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS admin_notifications (
-      id SERIAL PRIMARY KEY,
-      type VARCHAR(40) NOT NULL,
-      severity VARCHAR(20) NOT NULL DEFAULT 'info',
-      title VARCHAR(200) NOT NULL,
-      message TEXT NOT NULL,
-      actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-      target_href VARCHAR(300),
-      read_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    CREATE TABLE IF NOT EXISTS issued_certs (
+      id           SERIAL PRIMARY KEY,
+      cn           VARCHAR(200) NOT NULL,
+      fingerprint  VARCHAR(120),
+      issued_to    VARCHAR(200),
+      issued_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at   TIMESTAMPTZ,
+      revoked      BOOLEAN NOT NULL DEFAULT FALSE,
+      revoked_at   TIMESTAMPTZ,
+      revoked_reason TEXT
     )
   `);
 
+  // Task 6 — Validação de Autoria: fingerprint do cert guardado com a publicação
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_admin_notifications_created_at
-    ON admin_notifications(created_at DESC)
+    ALTER TABLE podcasts
+    ADD COLUMN IF NOT EXISTS author_cert_fingerprint VARCHAR(120)
+  `);
+  await pool.query(`
+    ALTER TABLE podcasts
+    ADD COLUMN IF NOT EXISTS author_cert_cn VARCHAR(200)
   `);
 
+  // Task 5 — Protecção contra Pirataria: registo de downloads com identidade do dispositivo
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_admin_notifications_unread
-    ON admin_notifications(read_at)
-    WHERE read_at IS NULL
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS live_comments (
-      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-      stream_id UUID NOT NULL REFERENCES streams(id) ON DELETE CASCADE,
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      body VARCHAR(500) NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    CREATE TABLE IF NOT EXISTS podcast_downloads (
+      id               SERIAL PRIMARY KEY,
+      podcast_id       UUID NOT NULL REFERENCES podcasts(id) ON DELETE CASCADE,
+      user_id          UUID REFERENCES users(id) ON DELETE SET NULL,
+      cert_fingerprint VARCHAR(120),
+      cert_cn          VARCHAR(200),
+      ip_address       VARCHAR(45),
+      downloaded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
-
   await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_live_comments_stream_created
-    ON live_comments(stream_id, created_at ASC)
+    CREATE INDEX IF NOT EXISTS idx_podcast_downloads_podcast ON podcast_downloads(podcast_id)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_podcast_downloads_cert ON podcast_downloads(cert_fingerprint)
+  `);
+
+  // Task 3 — Não Repúdio: cert do cliente + assinatura digital no log
+  await pool.query(`
+    ALTER TABLE logs
+    ADD COLUMN IF NOT EXISTS cert_fingerprint VARCHAR(120)
+  `);
+  await pool.query(`
+    ALTER TABLE logs
+    ADD COLUMN IF NOT EXISTS cert_cn VARCHAR(200)
+  `);
+  await pool.query(`
+    ALTER TABLE logs
+    ADD COLUMN IF NOT EXISTS signature TEXT
   `);
 
   await ensureDefaultCategories();

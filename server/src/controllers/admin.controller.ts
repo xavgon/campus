@@ -1,9 +1,17 @@
 import { Request, Response } from 'express';
 import * as adminService from '../services/admin.service';
+import * as certModel from '../models/cert.model';
+import * as downloadModel from '../models/download.model';
+import {
+  listAllowedClients,
+  allowClient,
+  revokeClient,
+} from '../security/allowedClients';
 import { sendSuccess } from '../utils/apiResponse';
 import { paramString } from '../utils/requestParams';
 
 const actorId = (req: Request): string | undefined => req.user?.userId;
+const certInfo = (req: Request) => req.clientCert ?? null;
 
 export const overview = async (_req: Request, res: Response): Promise<void> => {
   const data = await adminService.getAdminOverview();
@@ -30,7 +38,7 @@ export const patchUser = async (req: Request, res: Response): Promise<void> => {
   const user = await adminService.updateUser(paramString(req.params.id), id, {
     nome: typeof req.body.nome === 'string' ? req.body.nome : undefined,
     role: typeof req.body.role === 'string' ? req.body.role : undefined,
-  });
+  }, certInfo(req));
   sendSuccess(res, { user }, 'Utilizador actualizado');
 };
 
@@ -41,7 +49,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  await adminService.removeUser(paramString(req.params.id), id);
+  await adminService.removeUser(paramString(req.params.id), id, certInfo(req));
   sendSuccess(res, null, 'Utilizador eliminado');
 };
 
@@ -57,16 +65,13 @@ export const postPodcast = async (req: Request, res: Response): Promise<void> =>
     return;
   }
 
-  const podcast = await adminService.createPodcast(id, {
-    title: String(req.body.title ?? ''),
-    description: typeof req.body.description === 'string' ? req.body.description : undefined,
-    category_id:
-      req.body.category_id === null || req.body.category_id === ''
-        ? null
-        : Number(req.body.category_id) || undefined,
-    user_id: String(req.body.user_id ?? ''),
+  // Task 9 — Separação de papéis: administradores não podem publicar podcasts.
+  // Publicação é exclusiva do papel 'creator'. O admin gere a plataforma.
+  res.status(403).json({
+    success: false,
+    message: 'Administradores não podem publicar podcasts. Separação de papéis (Task 9): use uma conta de criador.',
+    data: null,
   });
-  sendSuccess(res, { podcast }, 'Publicação criada', 201);
 };
 
 export const patchPodcast = async (req: Request, res: Response): Promise<void> => {
@@ -96,7 +101,7 @@ export const deletePodcast = async (req: Request, res: Response): Promise<void> 
     return;
   }
 
-  await adminService.removePodcast(paramString(req.params.id), id);
+  await adminService.removePodcast(paramString(req.params.id), id, certInfo(req));
   sendSuccess(res, null, 'Publicação eliminada');
 };
 
@@ -171,34 +176,80 @@ export const getLogs = async (_req: Request, res: Response): Promise<void> => {
   sendSuccess(res, { logs }, 'Registo de actividade');
 };
 
-export const getNotifications = async (req: Request, res: Response): Promise<void> => {
-  const unreadOnly = req.query.unread === '1' || req.query.unread === 'true';
-  const rawLimit = req.query.limit;
-  const limit = typeof rawLimit === 'string' ? Number(rawLimit) : 30;
+// ── Gestão de Certificados CA (Task 4) ────────────────────────────────────────
 
-  const notifications = await adminService.listNotifications({
-    limit: Number.isFinite(limit) ? limit : 30,
-    unreadOnly,
-  });
-  sendSuccess(res, { notifications }, 'Notificações');
+export const getCerts = async (_req: Request, res: Response): Promise<void> => {
+  const certs = await certModel.listIssuedCerts();
+  sendSuccess(res, { certs }, 'Certificados emitidos pela CA-CAMPUS');
 };
 
-export const getNotificationUnreadCount = async (_req: Request, res: Response): Promise<void> => {
-  const count = await adminService.getUnreadNotificationCount();
-  sendSuccess(res, { count }, 'Notificações por ler');
-};
-
-export const patchNotificationRead = async (req: Request, res: Response): Promise<void> => {
-  const id = Number(paramString(req.params.id));
-  if (!Number.isFinite(id)) {
-    res.status(400).json({ success: false, message: 'ID inválido', data: null });
+export const registerCert = async (req: Request, res: Response): Promise<void> => {
+  const { cn, issued_to, expires_at, fingerprint } = req.body as {
+    cn?: string;
+    issued_to?: string;
+    expires_at?: string;
+    fingerprint?: string;
+  };
+  if (!cn || !issued_to) {
+    res.status(400).json({ success: false, message: 'cn e issued_to são obrigatórios', data: null });
     return;
   }
-  await adminService.markNotificationRead(id);
-  sendSuccess(res, null, 'Notificação marcada como lida');
+  const cert = await certModel.registerCert(cn, issued_to, expires_at ?? null, fingerprint ?? null);
+  sendSuccess(res, { cert }, 'Certificado registado na CA', 201);
 };
 
-export const postNotificationsReadAll = async (_req: Request, res: Response): Promise<void> => {
-  const count = await adminService.markAllNotificationsRead();
-  sendSuccess(res, { count }, 'Todas as notificações foram marcadas como lidas');
+// ── Protecção contra Pirataria (Task 5) ──────────────────────────────────────
+
+export const getDownloads = async (_req: Request, res: Response): Promise<void> => {
+  const downloads = await downloadModel.listDownloadsForAdmin();
+  sendSuccess(res, { downloads }, 'Histórico de downloads');
+};
+
+export const getPiracyAlerts = async (_req: Request, res: Response): Promise<void> => {
+  const alerts = await downloadModel.detectPiracyAlerts();
+  sendSuccess(res, { alerts }, 'Análise de pirataria');
+};
+
+export const revokeCert = async (req: Request, res: Response): Promise<void> => {
+  const id = Number(req.params.id);
+  const reason = typeof req.body.reason === 'string' ? req.body.reason : 'Revogado pelo administrador';
+  const cert = await certModel.revokeCert(id, reason);
+  if (!cert) {
+    res.status(404).json({ success: false, message: 'Certificado não encontrado', data: null });
+    return;
+  }
+  sendSuccess(res, { cert }, 'Certificado revogado');
+};
+
+// ── Mecanismo de Excepção — Allowlist (Task 8) ───────────────────────────────
+
+export const getAllowlist = async (_req: Request, res: Response): Promise<void> => {
+  const clients = listAllowedClients();
+  sendSuccess(res, { clients }, 'Lista de excepções (clientes sem certificado)');
+};
+
+export const addToAllowlist = async (req: Request, res: Response): Promise<void> => {
+  const { ip, reason } = req.body as { ip?: string; reason?: string };
+  if (!ip || typeof ip !== 'string') {
+    res.status(400).json({ success: false, message: 'ip é obrigatório', data: null });
+    return;
+  }
+  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^[0-9a-fA-F:]+$/;
+  if (!ipRegex.test(ip)) {
+    res.status(400).json({ success: false, message: 'Formato de IP inválido', data: null });
+    return;
+  }
+  allowClient(ip, reason ?? 'Adicionado manualmente pelo administrador');
+  sendSuccess(res, { ip }, 'IP adicionado à lista de excepções', 201);
+};
+
+export const removeFromAllowlist = async (req: Request, res: Response): Promise<void> => {
+  const rawIp = req.params.ip;
+  const ip = Array.isArray(rawIp) ? rawIp[0] : rawIp;
+  const removed = revokeClient(decodeURIComponent(ip));
+  if (!removed) {
+    res.status(404).json({ success: false, message: 'IP não encontrado na allowlist', data: null });
+    return;
+  }
+  sendSuccess(res, { ip }, 'IP removido da lista de excepções');
 };

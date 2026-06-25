@@ -13,6 +13,7 @@ import { ensureDefaultAdmin } from './database/seedAdmin';
 import { attachLiveGateway } from './live/live.gateway';
 import { errorHandler } from './middleware/errorHandler';
 import { notFoundHandler } from './middleware/notFoundHandler';
+import { requireClientCert } from './middleware/clientCert.middleware';
 import { authRouter } from './routes/auth.routes';
 import { categoriesRouter } from './routes/categories.routes';
 import { healthRouter } from './routes/health.routes';
@@ -27,8 +28,20 @@ const app = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // Task 7 — Mitigação MITM: HSTS força HTTPS em futuros acessos
+    hsts: {
+      maxAge: 31536000,       // 1 ano
+      includeSubDomains: true,
+      preload: true,
+    },
   }),
 );
+
+// Task 7 — Mitigação MITM: cabeçalho personalizado com info do cert do servidor
+app.use((_req, res, next) => {
+  res.setHeader('X-Campus-CA', 'CA-CAMPUS/ISPTEC');
+  next();
+});
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -43,6 +56,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/uploads', express.static(path.join(__dirname, '..', config.uploadDir)));
+
+// ── mTLS: verificação de certificado de cliente (Task 1 / Task 2) ─────────────
+// Aplicado a todas as rotas da API. O middleware permite:
+//   • Clientes com certificado válido assinado pela CA
+//   • IPs na allowlist (Task 8 — excepção administrativa)
+// Em desenvolvimento, localhost está na allowlist automaticamente (proxy Vite).
+app.use('/api', requireClientCert);
 
 if (config.nodeEnv !== 'production') {
   app.get('/live-test', (_req, res) => {
@@ -73,7 +93,20 @@ const httpServer = hasTls
       {
         key: fs.readFileSync(keyPath),
         cert: fs.readFileSync(certPath),
-        ...(fs.existsSync(caPath) ? { ca: fs.readFileSync(caPath) } : {}),
+        ca: fs.existsSync(caPath) ? fs.readFileSync(caPath) : undefined,
+        // mTLS: pede certificado ao cliente mas não rejeita automaticamente
+        // (a decisão de acesso é tomada pelo middleware requireClientCert)
+        requestCert: true,
+        rejectUnauthorized: false,
+        // Task 7 — Mitigação MITM: apenas TLS moderno e cifras fortes
+        minVersion: 'TLSv1.2' as const,
+        ciphers: [
+          'TLS_AES_256_GCM_SHA384',
+          'TLS_CHACHA20_POLY1305_SHA256',
+          'TLS_AES_128_GCM_SHA256',
+          'ECDHE-RSA-AES256-GCM-SHA384',
+          'ECDHE-RSA-AES128-GCM-SHA256',
+        ].join(':'),
       },
       app,
     )

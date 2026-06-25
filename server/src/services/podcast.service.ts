@@ -55,6 +55,7 @@ export const createPodcast = async (
     video?: Express.Multer.File;
     cover?: Express.Multer.File;
   },
+  authorCert?: { fingerprint: string; cn: string } | null,
 ): Promise<Podcast> => {
   if (!files.audio && !files.video) {
     throw new AppError('Ficheiro de áudio ou vídeo é obrigatório', 400);
@@ -95,6 +96,8 @@ export const createPodcast = async (
     cover_url,
     original_size,
     user_id: userId,
+    author_cert_fingerprint: authorCert?.fingerprint ?? null,
+    author_cert_cn: authorCert?.cn ?? null,
   });
 
   const compressionJobs =
