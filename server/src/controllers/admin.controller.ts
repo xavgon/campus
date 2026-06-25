@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as adminService from '../services/admin.service';
 import * as certModel from '../models/cert.model';
+import * as downloadModel from '../models/download.model';
 import { sendSuccess } from '../utils/apiResponse';
 import { paramString } from '../utils/requestParams';
 
@@ -193,6 +194,18 @@ export const registerCert = async (req: Request, res: Response): Promise<void> =
   }
   const cert = await certModel.registerCert(cn, issued_to, expires_at ?? null, fingerprint ?? null);
   sendSuccess(res, { cert }, 'Certificado registado na CA', 201);
+};
+
+// ── Protecção contra Pirataria (Task 5) ──────────────────────────────────────
+
+export const getDownloads = async (_req: Request, res: Response): Promise<void> => {
+  const downloads = await downloadModel.listDownloadsForAdmin();
+  sendSuccess(res, { downloads }, 'Histórico de downloads');
+};
+
+export const getPiracyAlerts = async (_req: Request, res: Response): Promise<void> => {
+  const alerts = await downloadModel.detectPiracyAlerts();
+  sendSuccess(res, { alerts }, 'Análise de pirataria');
 };
 
 export const revokeCert = async (req: Request, res: Response): Promise<void> => {

@@ -30,3 +30,7 @@ adminRouter.delete('/streams/:id', asyncHandler(adminController.deleteStream));
 adminRouter.get('/certs', asyncHandler(adminController.getCerts));
 adminRouter.post('/certs', asyncHandler(adminController.registerCert));
 adminRouter.delete('/certs/:id/revoke', asyncHandler(adminController.revokeCert));
+
+// Protecção contra Pirataria (Task 5)
+adminRouter.get('/downloads', asyncHandler(adminController.getDownloads));
+adminRouter.get('/piracy-alerts', asyncHandler(adminController.getPiracyAlerts));

@@ -65,6 +65,25 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     )
   `);
 
+  // Task 5 — Protecção contra Pirataria: registo de downloads com identidade do dispositivo
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS podcast_downloads (
+      id               SERIAL PRIMARY KEY,
+      podcast_id       UUID NOT NULL REFERENCES podcasts(id) ON DELETE CASCADE,
+      user_id          UUID REFERENCES users(id) ON DELETE SET NULL,
+      cert_fingerprint VARCHAR(120),
+      cert_cn          VARCHAR(200),
+      ip_address       VARCHAR(45),
+      downloaded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_podcast_downloads_podcast ON podcast_downloads(podcast_id)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_podcast_downloads_cert ON podcast_downloads(cert_fingerprint)
+  `);
+
   // Task 3 — Não Repúdio: cert do cliente + assinatura digital no log
   await pool.query(`
     ALTER TABLE logs
