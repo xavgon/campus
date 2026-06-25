@@ -17,6 +17,8 @@ export interface Podcast {
   category_name: string | null;
   user_id: string;
   author_nome: string;
+  author_cert_fingerprint: string | null;
+  author_cert_cn: string | null;
   created_at: string;
 }
 
@@ -29,6 +31,8 @@ export interface CreatePodcastData {
   original_size?: number | null;
   category_id?: number | null;
   user_id: string;
+  author_cert_fingerprint?: string | null;
+  author_cert_cn?: string | null;
 }
 
 const podcastSelect = `
@@ -37,6 +41,7 @@ const podcastSelect = `
   p.original_size, p.compressed_size, p.compression_ratio, p.processing_time_ms,
   p.category_id, c.name AS category_name,
   p.user_id, u.nome AS author_nome,
+  p.author_cert_fingerprint, p.author_cert_cn,
   p.created_at
 `;
 
@@ -99,8 +104,8 @@ export const findPodcastById = async (id: string): Promise<Podcast | null> => {
 
 export const insertPodcast = async (data: CreatePodcastData): Promise<Podcast> => {
   const result = await getPool().query(
-    `INSERT INTO podcasts (title, description, audio_url, video_url, cover_url, original_size, category_id, user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    `INSERT INTO podcasts (title, description, audio_url, video_url, cover_url, original_size, category_id, user_id, author_cert_fingerprint, author_cert_cn)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING id`,
     [
       data.title,
@@ -111,6 +116,8 @@ export const insertPodcast = async (data: CreatePodcastData): Promise<Podcast> =
       data.original_size ?? null,
       data.category_id ?? null,
       data.user_id,
+      data.author_cert_fingerprint ?? null,
+      data.author_cert_cn ?? null,
     ],
   );
 

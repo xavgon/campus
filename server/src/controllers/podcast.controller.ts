@@ -81,7 +81,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     cover: multerFiles?.['cover']?.[0],
   };
 
-  const podcast = await podcastService.createPodcast(input, userId, files);
+  const podcast = await podcastService.createPodcast(input, userId, files, req.clientCert ?? null);
   sendSuccess(res, { podcast }, 'Podcast publicado com sucesso', 201);
 };
 
