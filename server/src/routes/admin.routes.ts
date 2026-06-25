@@ -25,3 +25,8 @@ adminRouter.get('/streams', asyncHandler(adminController.getStreams));
 adminRouter.post('/streams', asyncHandler(adminController.postStream));
 adminRouter.patch('/streams/:id', asyncHandler(adminController.patchStream));
 adminRouter.delete('/streams/:id', asyncHandler(adminController.deleteStream));
+
+// Gestão de Certificados CA (Task 4)
+adminRouter.get('/certs', asyncHandler(adminController.getCerts));
+adminRouter.post('/certs', asyncHandler(adminController.registerCert));
+adminRouter.delete('/certs/:id/revoke', asyncHandler(adminController.revokeCert));

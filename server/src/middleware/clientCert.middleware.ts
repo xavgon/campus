@@ -3,6 +3,7 @@ import type { TLSSocket } from 'tls';
 import type { PeerCertificate } from 'tls';
 import { AppError } from './errorHandler';
 import { isClientAllowed } from '../security/allowedClients';
+import { isFingerprintRevoked } from '../models/cert.model';
 
 /**
  * Verifica se o certificado tem o Extended Key Usage (EKU) para autenticação de cliente.
@@ -30,7 +31,7 @@ const isClientAuthCert = (cert: PeerCertificate): boolean => {
  *   3. Cliente sem certificado + está na allowlist (Task 8) → PERMITIDO
  *   4. Cliente sem certificado                             → NEGADO (401)
  */
-export const requireClientCert = (req: Request, _res: Response, next: NextFunction): void => {
+export const requireClientCert = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   const socket = req.socket as TLSSocket;
 
   // Fallback: se o servidor estiver em HTTP (sem TLS) ignora a verificação
@@ -45,9 +46,17 @@ export const requireClientCert = (req: Request, _res: Response, next: NextFuncti
   // Caso 1: certificado válido assinado pela CA com EKU clientAuth
   const hasClientAuth = authorized && cert?.subject?.CN && isClientAuthCert(cert);
   if (hasClientAuth) {
+    const fingerprint = String(cert.fingerprint256 ?? cert.fingerprint);
+
+    // Task 4 — verificar se o certificado foi revogado pela CA
+    const revoked = await isFingerprintRevoked(fingerprint);
+    if (revoked) {
+      throw new AppError('Certificado revogado pela CA-CAMPUS. Contacte o administrador.', 403);
+    }
+
     req.clientCert = {
       cn: String(cert.subject.CN),
-      fingerprint: String(cert.fingerprint256 ?? cert.fingerprint),
+      fingerprint,
       validFrom: cert.valid_from ? String(cert.valid_from) : undefined,
       validTo: cert.valid_to ? String(cert.valid_to) : undefined,
       issuer: cert.issuer?.CN ? String(cert.issuer.CN) : 'unknown',

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as adminService from '../services/admin.service';
+import * as certModel from '../models/cert.model';
 import { sendSuccess } from '../utils/apiResponse';
 import { paramString } from '../utils/requestParams';
 
@@ -170,4 +171,37 @@ export const deleteStream = async (req: Request, res: Response): Promise<void> =
 export const getLogs = async (_req: Request, res: Response): Promise<void> => {
   const logs = await adminService.listLogs();
   sendSuccess(res, { logs }, 'Registo de actividade');
+};
+
+// ── Gestão de Certificados CA (Task 4) ────────────────────────────────────────
+
+export const getCerts = async (_req: Request, res: Response): Promise<void> => {
+  const certs = await certModel.listIssuedCerts();
+  sendSuccess(res, { certs }, 'Certificados emitidos pela CA-CAMPUS');
+};
+
+export const registerCert = async (req: Request, res: Response): Promise<void> => {
+  const { cn, issued_to, expires_at, fingerprint } = req.body as {
+    cn?: string;
+    issued_to?: string;
+    expires_at?: string;
+    fingerprint?: string;
+  };
+  if (!cn || !issued_to) {
+    res.status(400).json({ success: false, message: 'cn e issued_to são obrigatórios', data: null });
+    return;
+  }
+  const cert = await certModel.registerCert(cn, issued_to, expires_at ?? null, fingerprint ?? null);
+  sendSuccess(res, { cert }, 'Certificado registado na CA', 201);
+};
+
+export const revokeCert = async (req: Request, res: Response): Promise<void> => {
+  const id = Number(req.params.id);
+  const reason = typeof req.body.reason === 'string' ? req.body.reason : 'Revogado pelo administrador';
+  const cert = await certModel.revokeCert(id, reason);
+  if (!cert) {
+    res.status(404).json({ success: false, message: 'Certificado não encontrado', data: null });
+    return;
+  }
+  sendSuccess(res, { cert }, 'Certificado revogado');
 };

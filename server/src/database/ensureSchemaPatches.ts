@@ -50,6 +50,21 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER
   `);
 
+  // Task 4 — Gestão de certificados pela CA: registo de certs emitidos e revogados
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS issued_certs (
+      id           SERIAL PRIMARY KEY,
+      cn           VARCHAR(200) NOT NULL,
+      fingerprint  VARCHAR(120),
+      issued_to    VARCHAR(200),
+      issued_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      expires_at   TIMESTAMPTZ,
+      revoked      BOOLEAN NOT NULL DEFAULT FALSE,
+      revoked_at   TIMESTAMPTZ,
+      revoked_reason TEXT
+    )
+  `);
+
   // Task 3 — Não Repúdio: cert do cliente + assinatura digital no log
   await pool.query(`
     ALTER TABLE logs
