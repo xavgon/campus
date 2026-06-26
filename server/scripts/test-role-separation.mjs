@@ -1,12 +1,5 @@
 /**
- * Script de teste — Task 9 (Separação de Papéis: Admin não publica podcasts)
- *
- * Demonstra que:
- *   1. Admin tenta publicar via POST /api/podcasts → 403 (bloqueado por requireCreator)
- *   2. Admin tenta publicar via POST /api/admin/podcasts → 403 (bloqueado explicitamente)
- *   3. Admin consegue gerir utilizadores, logs, certs (papel correcto)
- *   4. Utilizador com papel 'creator' pode publicar (papel correcto)
- *
+ * Script de teste — Task 9 (Separação de Papéis / RBAC)
  * Executa: node server/scripts/test-role-separation.mjs
  */
 import https from 'https';
@@ -17,96 +10,217 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const certsDir = path.resolve(__dirname, '../certs');
 
-const CA       = fs.readFileSync(path.join(certsDir, 'ca.crt'));
+const CA = fs.readFileSync(path.join(certsDir, 'ca.crt'));
 const CLI_CERT = fs.readFileSync(path.join(certsDir, 'client.crt'));
-const CLI_KEY  = fs.readFileSync(path.join(certsDir, 'client.key'));
+const CLI_KEY = fs.readFileSync(path.join(certsDir, 'client.key'));
 
-const req = (method, reqPath, body, headers = {}) =>
+let failures = 0;
+
+const check = (label, ok, detail = '') => {
+  console.log(`${ok ? '✅' : '❌'} ${label}`);
+  if (detail) console.log(`   → ${detail}`);
+  if (!ok) failures += 1;
+};
+
+const request = (method, reqPath, body = null, extraHeaders = {}) =>
   new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
-    const r = https.request({
-      hostname: 'localhost', port: 3001, path: reqPath, method,
-      rejectUnauthorized: false, cert: CLI_CERT, key: CLI_KEY, ca: CA,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
-        ...headers,
+    const r = https.request(
+      {
+        hostname: 'localhost',
+        port: 3001,
+        path: reqPath,
+        method,
+        rejectUnauthorized: false,
+        cert: CLI_CERT,
+        key: CLI_KEY,
+        ca: CA,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+          ...extraHeaders,
+        },
       },
-    }, (res) => {
-      let raw = ''; res.on('data', (d) => (raw += d));
-      res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
-        catch { resolve({ status: res.statusCode, body: raw }); }
-      });
-    });
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, body: JSON.parse(raw) });
+          } catch {
+            resolve({ status: res.statusCode ?? 0, body: raw });
+          }
+        });
+      },
+    );
     r.on('error', reject);
     if (data) r.write(data);
     r.end();
   });
 
-const check = (label, ok, detail = '') => {
-  console.log(`${ok ? '✅' : '❌'} ${label}`);
-  if (detail) console.log(`   → ${detail}`);
+const createMinimalWav = () => {
+  const dataSize = 400;
+  const buffer = Buffer.alloc(44 + dataSize);
+  buffer.write('RIFF', 0);
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  buffer.write('WAVE', 8);
+  buffer.write('fmt ', 12);
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(1, 22);
+  buffer.writeUInt32LE(8000, 24);
+  buffer.writeUInt32LE(16000, 28);
+  buffer.writeUInt16LE(2, 32);
+  buffer.writeUInt16LE(16, 34);
+  buffer.write('data', 36);
+  buffer.writeUInt32LE(dataSize, 40);
+  return buffer;
 };
+
+const publishPodcast = (token, title) =>
+  new Promise((resolve, reject) => {
+    const audio = createMinimalWav();
+    const boundary = `----CampusRoles${Date.now()}`;
+    const preamble = Buffer.from(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="title"\r\n\r\n${title}\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="audio"; filename="task9.wav"\r\n` +
+        `Content-Type: audio/wav\r\n\r\n`,
+      'utf8',
+    );
+    const closing = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8');
+    const body = Buffer.concat([preamble, audio, closing]);
+
+    const r = https.request(
+      {
+        hostname: 'localhost',
+        port: 3001,
+        path: '/api/podcasts',
+        method: 'POST',
+        rejectUnauthorized: false,
+        cert: CLI_CERT,
+        key: CLI_KEY,
+        ca: CA,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': body.length,
+        },
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, body: JSON.parse(raw) });
+          } catch {
+            resolve({ status: res.statusCode ?? 0, body: raw });
+          }
+        });
+      },
+    );
+    r.on('error', reject);
+    r.write(body);
+    r.end();
+  });
 
 console.log('\n══════════════════════════════════════════════');
 console.log(' CAMPUS — Teste Separação de Papéis (Task 9)');
 console.log('══════════════════════════════════════════════\n');
 
-// 1. Login como admin
 console.log('Passo 1: autenticar como admin…');
-const adminLogin = await req('POST', '/api/auth/login', { email: 'admin@campus.co.ao', password: 'Campus123' });
-check('Login admin bem-sucedido', adminLogin.status === 200);
+const adminLogin = await request('POST', '/api/auth/login', {
+  email: 'admin@campus.co.ao',
+  password: 'Campus123',
+});
+check('Login admin', adminLogin.status === 200);
 const adminToken = adminLogin.body?.data?.token;
 const adminAuth = { Authorization: `Bearer ${adminToken}` };
-console.log(`   Papel: ${adminLogin.body?.data?.user?.role ?? 'desconhecido'}`);
+check('Papel admin', adminLogin.body?.data?.user?.role === 'admin', adminLogin.body?.data?.user?.role);
 
-// 2. Admin tenta publicar via rota de utilizador → deve falhar (403)
-console.log('\nPasso 2: admin tenta publicar via POST /api/podcasts…');
-const adminPublishUser = await req('POST', '/api/podcasts',
-  { title: 'Podcast do Admin (não deve funcionar)' }, adminAuth);
-check('Admin bloqueado (esperado 403)', adminPublishUser.status === 403,
-  `HTTP ${adminPublishUser.status} — ${adminPublishUser.body?.message ?? ''}`);
+console.log('\nPasso 2: admin bloqueado ao publicar…');
+const adminPublishUser = await publishPodcast(adminToken, 'Podcast do Admin');
+check('POST /api/podcasts → 403', adminPublishUser.status === 403, adminPublishUser.body?.message);
 
-// 3. Admin tenta publicar via rota de admin → também bloqueado (403)
-console.log('\nPasso 3: admin tenta publicar via POST /api/admin/podcasts…');
-const adminPublishAdmin = await req('POST', '/api/admin/podcasts',
-  { title: 'Podcast do Admin', user_id: 'qualquer' }, adminAuth);
-check('Admin bloqueado no painel admin (esperado 403)', adminPublishAdmin.status === 403,
-  `HTTP ${adminPublishAdmin.status} — ${adminPublishAdmin.body?.message ?? ''}`);
+const adminPublishAdmin = await request(
+  'POST',
+  '/api/admin/podcasts',
+  { title: 'Podcast Admin', user_id: 'qualquer' },
+  adminAuth,
+);
+check('POST /api/admin/podcasts → 403', adminPublishAdmin.status === 403, adminPublishAdmin.body?.message);
 
-// 4. Admin consegue gerir utilizadores (papel correcto)
-console.log('\nPasso 4: admin acede a gestão de utilizadores (acção permitida)…');
-const adminUsers = await req('GET', '/api/admin/users', null, adminAuth);
-check('Admin lista utilizadores (HTTP 200)', adminUsers.status === 200,
-  `${adminUsers.body?.data?.users?.length ?? 0} utilizador(es)`);
+console.log('\nPasso 3: admin modera (acções permitidas)…');
+const adminUsers = await request('GET', '/api/admin/users', null, adminAuth);
+check('GET /admin/users', adminUsers.status === 200);
 
-// 5. Admin acede a logs (papel correcto)
-const adminLogs = await req('GET', '/api/admin/logs', null, adminAuth);
-check('Admin acede a logs de auditoria (HTTP 200)', adminLogs.status === 200,
-  `${adminLogs.body?.data?.logs?.length ?? 0} registo(s)`);
+const adminPodcasts = await request('GET', '/api/admin/podcasts', null, adminAuth);
+const posts = adminPodcasts.body?.data?.podcasts ?? [];
+check('GET /admin/podcasts', adminPodcasts.status === 200, `${posts.length} publicação(ões)`);
 
-// 6. Verificar se existe algum utilizador com papel 'creator'
-console.log('\nPasso 5: verificar utilizadores com papel creator…');
-const users = adminUsers.body?.data?.users ?? [];
-const creators = users.filter((u) => u.role === 'creator');
-const regularUsers = users.filter((u) => u.role === 'user');
-console.log(`   Admins: ${users.filter((u) => u.role === 'admin').length}`);
-console.log(`   Creators: ${creators.length}`);
-console.log(`   Users: ${regularUsers.length}`);
-
-if (creators.length === 0) {
-  console.log('\n   ℹ️  Nenhum utilizador com papel "creator" encontrado.');
-  console.log('   Para demonstrar publicação por creator, promove um utilizador:');
-  console.log('   PATCH /api/admin/users/:id  { "role": "creator" }');
+if (posts[0]) {
+  const patchRes = await request(
+    'PATCH',
+    `/api/admin/podcasts/${posts[0].id}`,
+    { title: posts[0].title },
+    adminAuth,
+  );
+  check('PATCH /admin/podcasts (moderação)', patchRes.status === 200);
 }
 
-check('Separação confirmada: admin NÃO é creator', creators.every((c) => c.role !== 'admin'), '');
+const adminLogs = await request('GET', '/api/admin/logs', null, adminAuth);
+check('GET /admin/logs', adminLogs.status === 200);
+
+console.log('\nPasso 4: utilizador normal não publica…');
+const testEmail = `task9-${Date.now()}@campus.co.ao`;
+const testPass = 'Campus123!';
+const registerRes = await request('POST', '/api/auth/register', {
+  nome: 'Conta Task9',
+  email: testEmail,
+  password: testPass,
+});
+check('Registo de teste', registerRes.status === 200 || registerRes.status === 201, `HTTP ${registerRes.status}`);
+
+const userLogin = await request('POST', '/api/auth/login', { email: testEmail, password: testPass });
+const userToken = userLogin.body?.data?.token;
+const userId = userLogin.body?.data?.user?.id;
+check('Login como user', userLogin.status === 200 && !!userToken);
+
+const userPublish = await publishPodcast(userToken, 'Tentativa user');
+check('User sem creator → 403', userPublish.status === 403, userPublish.body?.message);
+
+console.log('\nPasso 5: admin promove a creator e publica…');
+if (userId) {
+  const promoteRes = await request(
+    'PATCH',
+    `/api/admin/users/${userId}`,
+    { role: 'creator' },
+    adminAuth,
+  );
+  check('Admin promove a creator', promoteRes.status === 200);
+}
+
+const creatorLogin = await request('POST', '/api/auth/login', { email: testEmail, password: testPass });
+const creatorToken = creatorLogin.body?.data?.token;
+check('Login com JWT de creator', creatorLogin.status === 200 && creatorLogin.body?.data?.user?.role === 'creator');
+
+const creatorPublish = await publishPodcast(creatorToken, `Task9 Creator ${Date.now()}`);
+check('Creator publica → 201', creatorPublish.status === 201, `HTTP ${creatorPublish.status}`);
 
 console.log('\n══════════════════════════════════════════════');
-console.log('Separação de papéis (Task 9):');
-console.log('  admin   → gere plataforma (users, logs, certs, streams)');
-console.log('  creator → publica e gere os seus próprios podcasts');
-console.log('  user    → ouve, descarrega, comenta');
-console.log('  Tentar publicar como admin → 403 Forbidden');
+console.log(' Separação de papéis (Task 9):');
+console.log('   admin   → modera plataforma (users, logs, PATCH podcasts)');
+console.log('   creator → publica episódios e transmite live');
+console.log('   user    → ouve e descarrega');
+console.log('   UI: /admin/users (papéis) + /admin/posts (moderação)');
 console.log('══════════════════════════════════════════════\n');
+
+if (failures > 0) {
+  console.error(`Falhas: ${failures}`);
+  process.exit(1);
+}

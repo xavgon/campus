@@ -1,8 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
 import { uploadAvatar, removeAvatar, updatePassword, updateProfile } from '@/features/auth/services/auth.service';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { ROLE_LABELS } from '@/features/auth/utils/rolePermissions';
+import { ProfileActivitySection } from '@/features/profile/components/ProfileActivitySection';
 import { ProfileCreatorSection } from '@/features/profile/components/ProfileCreatorSection';
+import { ProfileDeviceSection } from '@/features/profile/components/ProfileDeviceSection';
+import { ProfileTlsSection } from '@/features/profile/components/ProfileTlsSection';
 import { ProfilePhotoPicker } from '@/features/profile/components/ProfilePhotoPicker';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
@@ -57,8 +62,7 @@ export const ProfilePage = () => {
 
   const memberSince = formatMemberSince(user.created_at);
   const nomeChanged = nome.trim() !== user.nome;
-  const roleLabel =
-    user.role === 'admin' ? 'Administrador' : user.role === 'creator' ? 'Criador' : 'Utilizador';
+  const roleLabel = ROLE_LABELS[user.role];
 
   const onNameSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -150,6 +154,20 @@ export const ProfilePage = () => {
         description="Gere a tua identidade na plataforma, dados de acesso e sessão."
       />
 
+      <div className="campus-panel flex flex-col gap-3 border-campus-primary/25 bg-campus-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-campus-primary">Ajuda</p>
+          <p className="mt-1 text-sm text-campus-accent">
+            Consulta o manual com guias por papel — utilizador, criador e administrador.
+          </p>
+        </div>
+        <Link to="/ajuda" className="shrink-0">
+          <Button type="button" variant="outline" className="w-full sm:w-auto">
+            Abrir manual
+          </Button>
+        </Link>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,17rem)_1fr] lg:gap-8">
         <aside className="campus-panel flex flex-col items-center p-6 text-center sm:p-8 lg:items-stretch lg:text-left">
           <div className="mx-auto lg:mx-0">
@@ -184,6 +202,9 @@ export const ProfilePage = () => {
         </aside>
 
         <div className="space-y-6">
+          <ProfileDeviceSection />
+          <ProfileTlsSection />
+
           <ProfileSection
             title="Dados pessoais"
             description="O teu nome aparece no dashboard e nos episódios que publicares."
@@ -326,6 +347,8 @@ export const ProfilePage = () => {
               </Button>
             </div>
           </ProfileSection>
+
+          <ProfileActivitySection />
         </div>
       </div>
     </div>

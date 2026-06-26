@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { AdminDataTable } from '@/features/admin/components/AdminDataTable';
 import { AdminFeedback } from '@/features/admin/components/AdminFeedback';
-import { AdminFormPanel } from '@/features/admin/components/AdminFormPanel';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { RoleBadge } from '@/features/admin/components/RoleBadge';
 import { adminSelectClass } from '@/features/admin/components/adminFormStyles';
 import { useAdminLookups } from '@/features/admin/hooks/useAdminLookups';
 import {
-  createAdminPodcast,
   deleteAdminPodcast,
   fetchAdminPodcasts,
   updateAdminPodcast,
 } from '@/features/admin/services/admin.service';
 import type { AdminPodcastRow } from '@/features/admin/types/admin.types';
 import { formatAdminDate } from '@/features/admin/utils/formatAdminDate';
+import { truncateFingerprint } from '@/features/podcasts/utils/truncateFingerprint';
+import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { Field } from '@/shared/components/campus/Field';
 import { Modal } from '@/shared/components/campus/Modal';
 import { TextAreaField } from '@/shared/components/campus/TextAreaField';
@@ -20,17 +21,11 @@ import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
 export const AdminPostsPage = () => {
-  const { users, categories, isLoading: lookupsLoading } = useAdminLookups();
+  const { categories } = useAdminLookups();
   const [posts, setPosts] = useState<AdminPodcastRow[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [authorId, setAuthorId] = useState('');
 
   const [editing, setEditing] = useState<AdminPodcastRow | null>(null);
   const [editTitle, setEditTitle] = useState('');
@@ -49,43 +44,6 @@ export const AdminPostsPage = () => {
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (users.length > 0 && !authorId) setAuthorId(users[0].id);
-  }, [users, authorId]);
-
-  const resetCreateForm = () => {
-    setTitle('');
-    setDescription('');
-    setCategoryId('');
-    if (users[0]) setAuthorId(users[0].id);
-  };
-
-  const onCreate = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!authorId) {
-      setError('Selecciona um autor.');
-      return;
-    }
-    setIsCreating(true);
-    setNotice(null);
-    setError(null);
-    try {
-      const created = await createAdminPodcast({
-        title,
-        description,
-        user_id: authorId,
-        category_id: categoryId ? Number(categoryId) : null,
-      });
-      setPosts((prev) => [created, ...prev]);
-      setNotice('Publicação criada com sucesso.');
-      resetCreateForm();
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   const openEdit = (post: AdminPodcastRow) => {
     setEditing(post);
@@ -134,67 +92,18 @@ export const AdminPostsPage = () => {
     <section className="campus-panel p-5 sm:p-7">
       <AdminPageHeader
         eyebrow="Publicações"
-        title="Gestão de podcasts"
-        description="Cria publicações (metadados; áudio via Módulo 2), edita título e categoria, ou remove da plataforma."
+        title="Moderação de podcasts"
+        description="Task 9 — o administrador modera (editar/remover) mas não publica. A criação de episódios é exclusiva do papel criador."
       />
 
       <AdminFeedback notice={notice} error={error} />
 
-      <AdminFormPanel
-        title="Nova publicação"
-        description="Registo na base de dados sem ficheiro de áudio. O upload multipart chega no Módulo 2."
-        submitLabel="Criar publicação"
-        isSubmitting={isCreating}
-        onSubmit={onCreate}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Título"
-            name="postTitle"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-campus-foreground">Autor</label>
-            <select
-              className={adminSelectClass}
-              value={authorId}
-              disabled={lookupsLoading}
-              onChange={(e) => setAuthorId(e.target.value)}
-              required
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nome} ({u.email})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <TextAreaField
-          label="Descrição"
-          name="postDescription"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-        />
-        <div className="flex flex-col gap-1.5 sm:max-w-xs">
-          <label className="text-sm font-medium text-campus-foreground">Categoria</label>
-          <select
-            className={adminSelectClass}
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="">Sem categoria</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </AdminFormPanel>
+      <ProfileNotice
+        title="Separação de papéis"
+        message="Publicar novos episódios com áudio requer conta criador (/podcasts/new). Aqui podes corrigir metadados ou remover conteúdo indevido."
+        variant="info"
+        className="mb-6"
+      />
 
       <h2 className="mb-3 text-sm font-bold uppercase tracking-[0.12em] text-campus-muted">
         Publicações na plataforma
@@ -203,7 +112,7 @@ export const AdminPostsPage = () => {
       <AdminDataTable
         rows={posts}
         getRowKey={(row) => row.id}
-        emptyMessage="Nenhuma publicação. Usa o formulário acima para criar a primeira."
+        emptyMessage="Nenhuma publicação na plataforma."
         columns={[
           {
             key: 'title',
@@ -230,6 +139,22 @@ export const AdminPostsPage = () => {
             ),
           },
           {
+            key: 'authorship',
+            header: 'Autoria',
+            render: (row) =>
+              row.author_cert_fingerprint ? (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-300">Certificada</p>
+                  <p className="text-[11px] text-campus-muted">{row.author_cert_cn ?? '—'}</p>
+                  <p className="font-mono text-[10px] text-campus-muted">
+                    {truncateFingerprint(row.author_cert_fingerprint)}
+                  </p>
+                </div>
+              ) : (
+                <span className="text-xs text-campus-muted">Sem certificado</span>
+              ),
+          },
+          {
             key: 'created',
             header: 'Data',
             render: (row) => (
@@ -245,7 +170,7 @@ export const AdminPostsPage = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  className="!px-2 !py-1.5 text-xs"
+                  className="px-2! py-1.5! text-xs"
                   disabled={busyId === row.id}
                   onClick={() => openEdit(row)}
                 >
@@ -254,7 +179,7 @@ export const AdminPostsPage = () => {
                 <Button
                   type="button"
                   variant="ghost"
-                  className="!px-2 !py-1.5 text-xs text-campus-danger hover:bg-campus-danger/10"
+                  className="px-2! py-1.5! text-xs text-campus-danger hover:bg-campus-danger/10"
                   disabled={busyId === row.id}
                   onClick={() => void onDelete(row)}
                 >

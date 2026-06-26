@@ -1,7 +1,9 @@
 import http from 'http';
+import type { IncomingMessage } from 'http';
 import jwt from 'jsonwebtoken';
 import { WebSocket, WebSocketServer } from 'ws';
 import { config } from '../config';
+import { authenticatePeerCert, PeerCertDeniedError } from '../security/peerCert';
 import {
   beginLiveStream,
   endOrphanedLiveStreams,
@@ -161,7 +163,7 @@ const parseToken = (token: string): JwtPayload | null => {
   }
 };
 
-const canBroadcast = (role: string) => role === 'creator' || role === 'admin';
+const canBroadcast = (role: string) => role === 'creator';
 
 const processParticipantMessage = async (
   session: LiveSession,
@@ -227,7 +229,7 @@ const resumeLiveSession = async (
     broadcaster: ws,
     listeners: new Set(),
     startedAt: new Date(streamRow.started_at ?? Date.now()),
-    recorder: new LiveRecorder(streamRow.id, streamRow.title, mediaType),
+    recorder: new LiveRecorder(streamRow.id, streamRow.title, mediaType, payload.userId),
     reconnectTimer: null,
     commentRateByUser: createCommentRateMap(),
   };
@@ -244,9 +246,17 @@ const resumeLiveSession = async (
   return session;
 };
 
+const liveClientIp = (req: IncomingMessage): string => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded) {
+    return forwarded.split(',')[0]?.trim().replace(/^::ffff:/, '') ?? '';
+  }
+  return (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
+};
+
 // ─── Gateway principal ────────────────────────────────────────────────────────
 
-export const attachLiveGateway = (server: http.Server): void => {
+export const attachLiveGateway = (server: http.Server, tlsEnabled = false): void => {
   void endOrphanedLiveStreams().then((count) => {
     if (count > 0) {
       console.info(`[LIVE] ${count} transmissão(ões) órfã(s) marcadas como terminadas.`);
@@ -256,34 +266,50 @@ export const attachLiveGateway = (server: http.Server): void => {
   const wss = new WebSocketServer({ server, path: '/live' });
 
   wss.on('connection', (ws, req) => {
-    const url = new URL(req.url ?? '', `http://${req.headers.host}`);
-    const token = url.searchParams.get('token') ?? '';
-    const role = url.searchParams.get('role');
-    const liveId = url.searchParams.get('liveId') ?? '';
-
-    const payload = parseToken(token);
-    if (!payload) {
-      send(ws, { type: 'error', message: 'Token inválido' });
-      ws.close(1008, 'Unauthorized');
-      return;
-    }
-
-    if (role === 'broadcaster') {
-      if (!canBroadcast(payload.role)) {
-        send(ws, { type: 'error', message: 'Apenas criadores podem transmitir.' });
-        ws.close(1008, 'Forbidden');
+    void (async () => {
+      // Task 1 — mTLS também no canal live (WebSocket)
+      try {
+        await authenticatePeerCert(req.socket, liveClientIp(req));
+      } catch (err) {
+        const message =
+          err instanceof PeerCertDeniedError
+            ? err.message
+            : 'Certificado de cliente necessário para a transmissão em direto.';
+        send(ws, { type: 'error', message });
+        ws.close(1008, 'Cert required');
         return;
       }
-      handleBroadcaster(ws, payload);
-    } else if (role === 'listener') {
-      void handleListener(ws, payload, liveId);
-    } else {
-      send(ws, { type: 'error', message: 'Role inválido. Use broadcaster ou listener.' });
-      ws.close(1008, 'Bad role');
-    }
+
+      const url = new URL(req.url ?? '', `http://${req.headers.host}`);
+      const token = url.searchParams.get('token') ?? '';
+      const role = url.searchParams.get('role');
+      const liveId = url.searchParams.get('liveId') ?? '';
+
+      const payload = parseToken(token);
+      if (!payload) {
+        send(ws, { type: 'error', message: 'Token inválido' });
+        ws.close(1008, 'Unauthorized');
+        return;
+      }
+
+      if (role === 'broadcaster') {
+        if (!canBroadcast(payload.role)) {
+          send(ws, { type: 'error', message: 'Apenas criadores podem transmitir.' });
+          ws.close(1008, 'Forbidden');
+          return;
+        }
+        handleBroadcaster(ws, payload);
+      } else if (role === 'listener') {
+        await handleListener(ws, payload, liveId);
+      } else {
+        send(ws, { type: 'error', message: 'Role inválido. Use broadcaster ou listener.' });
+        ws.close(1008, 'Bad role');
+      }
+    })();
   });
 
-  console.log('[CAMPUS] WebSocket live gateway activo em ws://localhost:' + config.port + '/live');
+  const wsScheme = tlsEnabled ? 'wss' : 'ws';
+  console.log(`[CAMPUS] WebSocket live gateway activo em ${wsScheme}://localhost:${config.port}/live`);
 };
 
 // ─── Broadcaster ──────────────────────────────────────────────────────────────
@@ -372,7 +398,7 @@ const handleBroadcaster = (ws: WebSocket, payload: JwtPayload) => {
             broadcaster: ws,
             listeners: new Set(),
             startedAt: new Date(streamRow.started_at ?? Date.now()),
-            recorder: new LiveRecorder(streamRow.id, streamRow.title, mediaType),
+            recorder: new LiveRecorder(streamRow.id, streamRow.title, mediaType, payload.userId),
             reconnectTimer: null,
             commentRateByUser: createCommentRateMap(),
           };

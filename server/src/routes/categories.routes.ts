@@ -5,4 +5,5 @@ import { requireAuth } from '../middleware/auth.middleware';
 
 export const categoriesRouter = Router();
 
+categoriesRouter.get('/public', asyncHandler(categoriesController.getCategories));
 categoriesRouter.get('/', requireAuth, asyncHandler(categoriesController.getCategories));

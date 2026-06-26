@@ -60,6 +60,12 @@ export const HomePage = () => {
         )}
       </div>
 
+      <p className="mt-6 text-center text-sm text-campus-muted">
+        <Link to="/ajuda" className="font-semibold text-campus-primary hover:underline">
+          Manual de utilizador
+        </Link>
+      </p>
+
       <div className="mt-8 border-t border-campus-border pt-6 lg:hidden">
         <FeatureList />
       </div>

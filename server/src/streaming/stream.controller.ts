@@ -52,6 +52,7 @@ const streamFileWithRange = (
       'Accept-Ranges': 'bytes',
       'Content-Length': String(chunkSize),
       'Content-Type': contentType,
+      'Cache-Control': 'private, no-transform',
     });
 
     fs.createReadStream(filePath, { start, end }).pipe(res);
@@ -62,6 +63,7 @@ const streamFileWithRange = (
     'Content-Length': String(fileSize),
     'Content-Type': contentType,
     'Accept-Ranges': 'bytes',
+    'Cache-Control': 'private, no-transform',
   });
 
   fs.createReadStream(filePath).pipe(res);

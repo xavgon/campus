@@ -75,6 +75,16 @@ export const ensureSchemaPatches = async (): Promise<void> => {
     ADD COLUMN IF NOT EXISTS author_cert_cn VARCHAR(200)
   `);
 
+  // RF04 — Metadados multimédia: duração (ffprobe) e formato do ficheiro
+  await pool.query(`
+    ALTER TABLE podcasts
+    ADD COLUMN IF NOT EXISTS duration_seconds INTEGER
+  `);
+  await pool.query(`
+    ALTER TABLE podcasts
+    ADD COLUMN IF NOT EXISTS media_format VARCHAR(20)
+  `);
+
   // Task 5 — Protecção contra Pirataria: registo de downloads com identidade do dispositivo
   await pool.query(`
     CREATE TABLE IF NOT EXISTS podcast_downloads (
@@ -92,6 +102,16 @@ export const ensureSchemaPatches = async (): Promise<void> => {
   `);
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_podcast_downloads_cert ON podcast_downloads(cert_fingerprint)
+  `);
+
+  // Task 8 — Mecanismo de Excepção: allowlist persistida (IPs sem certificado)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS mtls_allowlist (
+      ip         VARCHAR(45) PRIMARY KEY,
+      reason     TEXT NOT NULL,
+      added_by   UUID REFERENCES users(id) ON DELETE SET NULL,
+      added_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
   `);
 
   // Task 3 — Não Repúdio: cert do cliente + assinatura digital no log

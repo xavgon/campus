@@ -1,8 +1,10 @@
 import type {
+  AccessInfo,
   AuthPayload,
   LoginCredentials,
   RegisterCredentials,
   User,
+  UserActivityRow,
 } from '@/features/auth/types/auth.types';
 import { api } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types';
@@ -19,6 +21,16 @@ export const login = async (credentials: LoginCredentials) => {
 
 export const fetchProfile = async () => {
   const { data } = await api.get<ApiResponse<{ user: User }>>('/auth/profile');
+  return data;
+};
+
+export const fetchUserActivity = async () => {
+  const { data } = await api.get<ApiResponse<{ logs: UserActivityRow[] }>>('/auth/activity');
+  return data;
+};
+
+export const fetchAccessInfo = async () => {
+  const { data } = await api.get<ApiResponse<AccessInfo>>('/auth/access');
   return data;
 };
 

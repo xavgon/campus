@@ -2,16 +2,24 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 import { LiveSessionCard } from '@/features/live/components/LiveSessionCard';
+import { LiveServerRecordingsPanel } from '@/features/live/components/LiveServerRecordingsPanel';
 import { useActiveLives } from '@/features/live/hooks/useActiveLives';
-import { ERROR_TITLES } from '@/shared/copy/campusMessages';
 import { Alert } from '@/shared/components/campus/Alert';
+import { CampusPagination } from '@/shared/components/campus/CampusPagination';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
 import { Button } from '@/shared/components/ui/Button';
+import { LIST_PAGE_SIZE } from '@/shared/constants/pagination';
+import { ERROR_TITLES } from '@/shared/copy/campusMessages';
+import { useClientPagination } from '@/shared/hooks/useClientPagination';
 
 export const LiveHubPage = () => {
   const { user } = useAuth();
   const canBroadcast = canPublishPodcasts(user);
   const { sessions, isLoading, error, refresh } = useActiveLives();
+  const { items: visibleSessions, page, setPage, totalPages } = useClientPagination(
+    sessions,
+    LIST_PAGE_SIZE,
+  );
 
   return (
     <div className="campus-page-enter space-y-8">
@@ -54,12 +62,23 @@ export const LiveHubPage = () => {
       )}
 
       {!isLoading && sessions.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {sessions.map((session) => (
-            <LiveSessionCard key={session.id} session={session} />
-          ))}
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleSessions.map((session) => (
+              <LiveSessionCard key={session.id} session={session} />
+            ))}
+          </div>
+          <CampusPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            ariaLabel="Paginação de transmissões"
+            className="border-t border-campus-border/50 pt-4"
+          />
         </div>
       )}
+
+      {canBroadcast && <LiveServerRecordingsPanel />}
     </div>
   );
 };

@@ -41,3 +41,15 @@ export interface LiveComment {
   createdAt: string;
   isHost: boolean;
 }
+
+export interface ServerLiveRecording {
+  id: string;
+  title: string;
+  mediaType: LiveMediaType;
+  durationSeconds: number;
+  startedAt: string;
+  endedAt: string;
+  hasAudio: boolean;
+  hasVideo: boolean;
+  publishedPodcastId: string | null;
+}

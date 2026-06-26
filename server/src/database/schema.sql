@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS podcasts (
   original_size BIGINT,
   compressed_size BIGINT,
   compression_ratio DECIMAL(5, 2),
+  duration_seconds INTEGER,
+  media_format VARCHAR(20),
   category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -42,6 +42,7 @@ export const CampusNav = () => {
               key={item.to}
               to={item.to}
               end={item.end}
+              icon={item.icon}
               matchPath={item.isActive}
               className={item.className}
             >

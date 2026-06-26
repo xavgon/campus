@@ -36,12 +36,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const response = await authApi.login(credentials);
     setToken(response.data.token);
     setUser(response.data.user);
+    return response;
   }, []);
 
   const register = useCallback(async (credentials: RegisterCredentials) => {
     const response = await authApi.register(credentials);
     setToken(response.data.token);
     setUser(response.data.user);
+    return response;
   }, []);
 
   const logout = useCallback(() => {

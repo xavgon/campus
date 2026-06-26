@@ -34,7 +34,22 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     to: '/admin/logs',
-    label: 'Registo',
-    description: 'Histórico de acções administrativas',
+    label: 'Auditoria',
+    description: 'Logs assinados e não repúdio',
+  },
+  {
+    to: '/admin/certs',
+    label: 'Certificados',
+    description: 'CA-CAMPUS — emissão e revogação',
+  },
+  {
+    to: '/admin/allowlist',
+    label: 'Excepções',
+    description: 'Allowlist — IPs sem certificado',
+  },
+  {
+    to: '/admin/piracy',
+    label: 'Anti-pirataria',
+    description: 'Downloads rastreados e alertas',
   },
 ];

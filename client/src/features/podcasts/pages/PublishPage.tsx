@@ -1,7 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
+import { AuthorCertBadge } from '@/features/podcasts/components/AuthorCertBadge';
 import { FileDropzone } from '@/features/podcasts/components/FileDropzone';
+import { UploadProgressBar } from '@/features/podcasts/components/UploadProgressBar';
 import {
   AUDIO_ACCEPT,
   VIDEO_ACCEPT,
@@ -11,11 +13,14 @@ import {
 } from '@/features/podcasts/constants';
 import { usePodcastCategories } from '@/features/podcasts/hooks/usePodcastCategories';
 import { publishPodcast } from '@/features/podcasts/services/podcast.service';
+import { fetchAccessInfo } from '@/features/auth/services/auth.service';
+import type { DeviceAccess } from '@/features/auth/types/auth.types';
 import {
   hasPublishErrors,
   validatePublishForm,
   type PublishFormErrors,
 } from '@/features/podcasts/utils/publish.validation';
+import { AUDIO_COMPRESSION_PROFILES } from '@/features/podcasts/utils/formatCompressionProfile';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { ProfileSection } from '@/features/profile/components/ProfileSection';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
@@ -41,6 +46,19 @@ export const PublishPage = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [deviceAccess, setDeviceAccess] = useState<DeviceAccess | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetchAccessInfo();
+        setDeviceAccess(response.data.deviceAccess);
+      } catch {
+        setDeviceAccess(null);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!cover) {
@@ -80,6 +98,7 @@ export const PublishPage = () => {
     if (hasPublishErrors(nextErrors)) return;
 
     setIsSubmitting(true);
+    setUploadProgress(0);
     try {
       const formData = new FormData();
       formData.append('title', title);
@@ -91,14 +110,20 @@ export const PublishPage = () => {
       if (video) formData.append('video', video);
       if (cover) formData.append('cover', cover);
 
-      await publishPodcast(formData);
-      navigate('/podcasts', {
-        state: { notice: 'Episódio publicado. A compressão pode demorar alguns minutos.' },
+      const podcast = await publishPodcast(formData, {
+        onUploadProgress: (percent) => setUploadProgress(percent),
+      });
+      navigate(`/podcasts/${podcast.id}`, {
+        replace: true,
+        state: {
+          notice: `«${podcast.title}» foi publicado. A compressão pode demorar alguns minutos.`,
+        },
       });
     } catch (err) {
       setSubmitError(getApiErrorMessage(err));
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -107,7 +132,7 @@ export const PublishPage = () => {
       <PageHeader
         eyebrow="Publicar"
         title="Novo episódio"
-        description="Preenche os metadados e carrega o áudio. A capa é opcional mas recomendada para o catálogo."
+        description="Como criador de conteúdo, preenche os metadados e envia o áudio ou vídeo. A compressão inicia automaticamente após o upload."
       />
 
       <form className="space-y-6" onSubmit={onSubmit} noValidate>
@@ -213,7 +238,7 @@ export const PublishPage = () => {
 
             <ProfileSection
               title="Ficheiros"
-              description="Carrega áudio ou vídeo. Ambos são comprimidos automaticamente após o upload."
+              description={`Carrega áudio ou vídeo. O servidor comprime automaticamente (FFmpeg): ${AUDIO_COMPRESSION_PROFILES.mp3}, ${AUDIO_COMPRESSION_PROFILES.aac} ou ${AUDIO_COMPRESSION_PROFILES.ogg}, conforme o formato de origem.`}
             >
               <div className="grid gap-6 sm:grid-cols-2">
                 <FileDropzone
@@ -262,6 +287,30 @@ export const PublishPage = () => {
           <aside className="space-y-6">
             <div className="campus-panel p-6">
               <h2 className="text-sm font-bold uppercase tracking-wide text-campus-primary">
+                Autoria certificada
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-campus-accent">
+                A publicação regista o certificado do dispositivo (Task 6). O fingerprint fica
+                associado ao episódio e pode ser verificado por qualquer utilizador.
+              </p>
+              <dl className="mt-4 space-y-2 text-sm">
+                <div>
+                  <dt className="text-campus-muted">Dispositivo (CN)</dt>
+                  <dd className="mt-1 font-medium text-campus-foreground">
+                    {deviceAccess?.cn ?? 'A verificar no envio…'}
+                  </dd>
+                </div>
+                {deviceAccess?.mode === 'allowlist' && (
+                  <p className="text-xs text-amber-300/90">
+                    Modo desenvolvimento (allowlist) — em produção com MTLS_STRICT, o certificado
+                    é obrigatório para publicar.
+                  </p>
+                )}
+              </dl>
+            </div>
+
+            <div className="campus-panel p-6">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-campus-primary">
                 Antes de publicar
               </h2>
               <ul className="mt-4 space-y-3 text-sm leading-relaxed text-campus-accent">
@@ -272,6 +321,12 @@ export const PublishPage = () => {
             </div>
 
             <div className="campus-panel flex flex-col gap-3 p-6">
+              {isSubmitting && uploadProgress !== null && (
+                <UploadProgressBar
+                  percent={uploadProgress}
+                  label={uploadProgress < 100 ? 'A enviar episódio…' : 'A finalizar…'}
+                />
+              )}
               <AuthSubmitButton loading={isSubmitting} loadingLabel="A enviar…">
                 Publicar episódio
               </AuthSubmitButton>

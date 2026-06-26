@@ -15,6 +15,8 @@ export interface Podcast {
   categoryName: string;
   authorName: string;
   authorId: string;
+  authorCertFingerprint?: string | null;
+  authorCertCn?: string | null;
   coverUrl?: string;
   audioUrl?: string;
   videoUrl?: string;
@@ -22,12 +24,14 @@ export interface Podcast {
   mediaUrl?: string;
   mediaType?: 'audio' | 'video';
   durationSeconds: number;
+  mediaFormat?: string;
   status: PodcastStatus;
   createdAt: string;
   playCount?: number;
   originalSize?: number;
   compressedSize?: number;
   compressionRatio?: number;
+  processingTimeMs?: number;
 }
 
 export interface PodcastLibraryFilters {

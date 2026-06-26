@@ -128,8 +128,8 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   });
 };
 
-/** Valida token de reset e actualiza a password. */
-export const resetPassword = async (token: string, newPassword: string): Promise<void> => {
+/** Valida token de reset e actualiza a password. Devolve o id do utilizador. */
+export const resetPassword = async (token: string, newPassword: string): Promise<string> => {
   let payload: ResetTokenPayload;
 
   try {
@@ -148,6 +148,7 @@ export const resetPassword = async (token: string, newPassword: string): Promise
 
   const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await updateUserPassword(payload.userId, hash);
+  return payload.userId;
 };
 
 export const updateAvatar = async (userId: string, newFilePath: string): Promise<PublicUser> => {
@@ -219,7 +220,7 @@ export const becomeCreator = async (userId: string): Promise<AuthResult> => {
   if (!user) throw new AppError('Utilizador não encontrado', 404);
 
   if (user.role === 'admin') {
-    throw new AppError('Conta de administrador já tem permissões de criador', 400);
+    throw new AppError('Contas de administrador não podem activar o modo criador', 400);
   }
 
   const publicUser =
@@ -246,7 +247,7 @@ export const leaveCreator = async (userId: string): Promise<LeaveCreatorResult> 
   if (!user) throw new AppError('Utilizador não encontrado', 404);
 
   if (user.role === 'admin') {
-    throw new AppError('Administradores não podem deixar de ser criadores por esta via', 400);
+    throw new AppError('Contas de administrador não usam o modo criador', 400);
   }
 
   if (user.role === 'user') {

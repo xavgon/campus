@@ -2,19 +2,27 @@ import type { User } from '@/features/auth/types/auth.types';
 import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 import { isAdminUser } from '@/features/auth/utils/isAdmin';
 
+export type NavIconKey = 'book';
+
 export interface NavItem {
   to: string;
   label: string;
   end?: boolean;
   className?: string;
+  icon?: NavIconKey;
   /** Substitui a lógica por defeito do NavLink (ex.: /podcasts sem apanhar /podcasts/new) */
   isActive?: (pathname: string) => boolean;
 }
+
+export const USER_MANUAL_TO = '/ajuda';
+
+const HELP_NAV_ITEM: NavItem = { to: USER_MANUAL_TO, label: 'Ajuda', icon: 'book' };
 
 /** Visitante — páginas públicas */
 export const PUBLIC_NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Início', end: true },
   { to: '/explorar', label: 'Explorar' },
+  HELP_NAV_ITEM,
   { to: '/login', label: 'Entrar' },
   { to: '/register', label: 'Criar conta', className: 'hidden sm:inline-flex' },
 ];
@@ -27,7 +35,7 @@ const LIVE_NAV_ITEM: NavItem = {
     (pathname.startsWith('/live/') && pathname !== '/live/broadcast'),
 };
 
-/** Sessão iniciada — área da aplicação (sem «Publicar»; ver getAppNavItems) */
+/** Sessão iniciada — área da aplicação (Perfil e manual via NavUserMenu / rodapé da sidebar). */
 const APP_NAV_BASE: NavItem[] = [
   { to: '/dashboard', label: 'Dashboard', end: true },
   {
@@ -38,7 +46,6 @@ const APP_NAV_BASE: NavItem[] = [
       (pathname.startsWith('/podcasts/') && pathname !== '/podcasts/new'),
   },
   LIVE_NAV_ITEM,
-  { to: '/profile', label: 'Perfil', end: true },
 ];
 
 const PUBLISH_NAV_ITEM: NavItem = { to: '/podcasts/new', label: 'Publicar', end: true };
@@ -60,7 +67,7 @@ export const getAppNavItems = (user: User | null): NavItem[] => {
   return isAdminUser(user) ? [...items, ADMIN_NAV_ITEM] : items;
 };
 
-const APP_ROUTE_PREFIXES = ['/dashboard', '/podcasts', '/live', '/profile', '/admin'] as const;
+const APP_ROUTE_PREFIXES = ['/dashboard', '/podcasts', '/live', '/profile', '/admin', '/ajuda'] as const;
 
 export const isAppAreaRoute = (pathname: string): boolean =>
   APP_ROUTE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));

@@ -49,7 +49,11 @@ export const AdminOverviewPage = () => {
         <Link to="/admin/logs" className="font-bold text-campus-primary hover:underline">
           Registo
         </Link>
-        .
+        . Consulta o{' '}
+        <Link to="/ajuda#seguranca" className="font-bold text-campus-primary hover:underline">
+          manual de administrador
+        </Link>{' '}
+        para auditoria, certificados, excepções e anti-pirataria.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {ADMIN_NAV_ITEMS.filter((item) => item.to !== '/admin').map((item) => (

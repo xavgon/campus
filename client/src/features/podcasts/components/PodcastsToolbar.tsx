@@ -19,6 +19,7 @@ interface PodcastsToolbarProps {
   resultCount: number;
   hasActiveFilters: boolean;
   isSearching?: boolean;
+  searchPlaceholder?: string;
   onSearchChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onSortChange: (value: PodcastSort) => void;
@@ -32,6 +33,7 @@ export const PodcastsToolbar = ({
   resultCount,
   hasActiveFilters,
   isSearching = false,
+  searchPlaceholder = 'Título, descrição ou autor…',
   onSearchChange,
   onCategoryChange,
   onSortChange,
@@ -44,7 +46,7 @@ export const PodcastsToolbar = ({
           label="Pesquisar"
           name="podcastSearch"
           type="search"
-          placeholder="Título, descrição ou autor…"
+          placeholder={searchPlaceholder}
           value={filters.search}
           onChange={(e) => onSearchChange(e.target.value)}
           autoComplete="off"

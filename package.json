@@ -1,0 +1,16 @@
+{
+  "name": "campus",
+  "private": true,
+  "description": "CAMPUS — plataforma de podcasts educativos (client + server)",
+  "scripts": {
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "typecheck": "npm run typecheck --prefix server",
+    "typecheck:client": "npm run build --prefix client",
+    "db:migrate": "npm run db:migrate --prefix server",
+    "db:seed": "npm run db:seed --prefix server",
+    "certs:bootstrap": "npm run certs:bootstrap --prefix server",
+    "test:rf": "npm run test:all --prefix server",
+    "test:all": "npm run test:all --prefix server"
+  }
+}

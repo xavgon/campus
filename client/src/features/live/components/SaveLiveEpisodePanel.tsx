@@ -14,7 +14,7 @@ import { Alert } from '@/shared/components/campus/Alert';
 import { Field } from '@/shared/components/campus/Field';
 import { TextAreaField } from '@/shared/components/campus/TextAreaField';
 import { getApiErrorMessage } from '@/shared/api/client';
-import { ERROR_TITLES, LIVE_COPY } from '@/shared/copy/campusMessages';
+import { ERROR_TITLES, LIVE_COPY, VOD_COPY } from '@/shared/copy/campusMessages';
 import { Button } from '@/shared/components/ui/Button';
 
 interface SaveLiveEpisodePanelProps {
@@ -76,7 +76,9 @@ export const SaveLiveEpisodePanel = ({
         format,
         recording,
       });
-      void navigate(`/podcasts/${podcast.id}`);
+      void navigate(`/podcasts/${podcast.id}`, {
+        state: { notice: VOD_COPY.livePublishedNotice },
+      });
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {

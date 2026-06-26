@@ -26,7 +26,15 @@ export interface AdminPodcastRow {
   user_id: string;
   author_nome: string;
   author_email: string;
+  author_cert_fingerprint: string | null;
+  author_cert_cn: string | null;
   created_at: string;
+}
+
+export interface AdminAllowlistRow {
+  ip: string;
+  reason: string;
+  addedAt: string;
 }
 
 export type StreamStatus = 'scheduled' | 'live' | 'ended';
@@ -36,11 +44,49 @@ export interface AdminCategory {
   name: string;
 }
 
+export interface AdminCertRow {
+  id: number;
+  cn: string;
+  fingerprint: string | null;
+  issued_to: string | null;
+  issued_at: string;
+  expires_at: string | null;
+  revoked: boolean;
+  revoked_at: string | null;
+  revoked_reason: string | null;
+}
+
+export interface AdminDownloadRow {
+  id: number;
+  podcast_id: string;
+  podcast_title: string | null;
+  user_id: string | null;
+  user_nome: string | null;
+  cert_fingerprint: string | null;
+  cert_cn: string | null;
+  ip_address: string | null;
+  downloaded_at: string;
+}
+
+export interface AdminPiracyAlertRow {
+  podcast_id: string;
+  podcast_title: string | null;
+  total_downloads: number;
+  unique_certs: number;
+  unique_users: number;
+  unique_ips: number;
+  no_cert_downloads: number;
+}
+
 export interface AdminLogRow {
   id: number;
   user_id: string | null;
   user_nome: string | null;
   action: string;
+  cert_fingerprint: string | null;
+  cert_cn: string | null;
+  signature: string | null;
+  signature_valid: boolean | null;
   created_at: string;
 }
 

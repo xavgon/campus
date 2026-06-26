@@ -103,9 +103,13 @@ export const SERVER_MESSAGE_OVERRIDES: Record<string, string> = {
   'Não foi possível activar a conta de criador':
     'Não foi possível activar a conta de criador. Tenta outra vez.',
   'Administradores não podem deixar de ser criadores por esta via':
-    'Contas de administrador mantêm sempre permissões de criador.',
+    'Contas de administrador não usam o modo criador.',
   'Conta de administrador já tem permissões de criador':
-    'A tua conta de administrador já inclui permissões de criador.',
+    'Contas de administrador não podem activar o modo criador.',
+  'Contas de administrador não podem activar o modo criador':
+    'A gestão de conteúdo é feita no painel Admin; para publicar, usa uma conta de criador.',
+  'Contas de administrador não usam o modo criador':
+    'A tua conta de administrador foca-se na gestão da plataforma.',
   'Erro ao actualizar foto': 'Não conseguimos actualizar a foto de perfil. Tenta outra imagem.',
   'Erro ao remover foto': 'Não conseguimos remover a foto de perfil.',
   'Nenhuma imagem enviada': 'Escolhe uma imagem antes de guardar.',
@@ -146,7 +150,80 @@ export const LIVE_COPY = {
 
 export const MEDIA_COPY = {
   playbackFailed: 'Não conseguimos reproduzir este episódio. Tenta outra vez mais tarde.',
-  autoplayBlocked: 'O browser bloqueou a reprodução. Clica em Play para começar.',
+  autoplayBlocked: 'O browser bloqueou a reprodução. Clica em Reproduzir para começar.',
+} as const;
+
+/** Pesquisa de podcasts (RF09). */
+export const SEARCH_COPY = {
+  placeholder: 'Título, autor, categoria ou tema educativo…',
+  exploreTitle: 'Explorar podcasts',
+  exploreDescription:
+    'Pesquisa episódios por título, autor, categoria ou tema. Entra na tua conta para ouvir e descarregar.',
+  loginToListen: 'Entrar para ouvir',
+  viewEpisode: 'Ver episódio',
+  publicEmpty: 'Ainda não há episódios públicos disponíveis.',
+  publicEmptyFilters: 'Nenhum episódio corresponde à pesquisa. Tenta outros termos ou limpa os filtros.',
+} as const;
+
+/** Registo de actividades (RF13). */
+export const ACTIVITY_COPY = {
+  sectionTitle: 'A minha actividade',
+  sectionDescription:
+    'Últimas acções registadas na tua conta — login, publicações, downloads e alterações de perfil.',
+  loading: 'A carregar actividade…',
+  empty: 'Ainda não há registos. As acções na plataforma passam a aparecer aqui.',
+  refresh: 'Actualizar',
+} as const;
+
+/** Gestão de permissões (RF12). */
+export const PERMISSIONS_COPY = {
+  userDescription: 'Ouve, explora e descarrega episódios. Podes tornar-te criador no perfil.',
+  creatorDescription: 'Publica episódios, transmite ao vivo e gere a tua biblioteca.',
+  adminDescription: 'Modera utilizadores, publicações, transmissões e segurança — sem publicar conteúdo.',
+  creatorOnlyRoute: 'Esta área é reservada a criadores de conteúdo.',
+  adminOnlyRoute: 'Esta área é reservada a administradores.',
+} as const;
+
+/** Download de episódios (RF11). */
+export const DOWNLOAD_COPY = {
+  audioButton: 'Descarregar áudio',
+  videoButton: 'Descarregar vídeo',
+  audioHint: 'Guarda o áudio comprimido no dispositivo para ouvir offline.',
+  videoHint: 'Guarda o vídeo comprimido no dispositivo para ver offline.',
+  unavailable: 'O download só fica disponível quando a compressão terminar.',
+  inProgress: 'A descarregar…',
+} as const;
+
+/** Consulta de conteúdos (RF10). */
+export const CATALOG_COPY = {
+  detailBack: '← Voltar ao catálogo',
+  detailEyebrow: 'Detalhe do episódio',
+  detailLoginHint: 'Inicia sessão para ouvir, ver o player completo e descarregar o episódio.',
+  detailNotFound: 'Este episódio não está disponível no catálogo público.',
+} as const;
+
+/** Controlos do leitor multimédia (RF08). */
+export const PLAYER_COPY = {
+  play: 'Reproduzir',
+  pause: 'Pausar',
+  stop: 'Parar',
+  skipBack: (seconds: number) => `Retroceder ${seconds} segundos`,
+  skipForward: (seconds: number) => `Avançar ${seconds} segundos`,
+  volume: 'Volume',
+  mute: 'Silenciar',
+  unmute: 'Activar som',
+  seek: 'Posição na faixa',
+  fullscreen: 'Ecrã inteiro',
+  keyboardHint:
+    'Atalhos: Espaço reproduzir/pausar, setas ← → avançar/retroceder, Início parar, M silenciar.',
+} as const;
+
+export const VOD_COPY = {
+  onDemandTitle: 'Sob demanda',
+  onDemandMessage:
+    'Este episódio está na biblioteca e podes ouvir ou ver quando quiseres — não é necessário estar em direto.',
+  livePublishedNotice:
+    'Episódio publicado a partir da transmissão. Já está disponível na biblioteca VOD.',
 } as const;
 
 export const EMPTY_STATE_COPY = {

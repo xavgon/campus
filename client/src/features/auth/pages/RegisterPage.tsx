@@ -4,6 +4,7 @@ import { AuthFormSkeleton } from '@/features/auth/components/AuthFormSkeleton';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { LockIcon, MailIcon, UserIcon } from '@/features/auth/components/icons';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { getPostAuthPath } from '@/features/auth/utils/postAuthRedirect';
 import { useAuthForm } from '@/features/auth/hooks/useAuthForm';
 import {
   hasRegisterFieldErrors,
@@ -17,7 +18,7 @@ import { Field } from '@/shared/components/campus/Field';
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
-  const { register, isAuthenticated, isLoading } = useAuth();
+  const { register, user, isAuthenticated, isLoading } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,12 +27,13 @@ export const RegisterPage = () => {
 
   // Hook must be called before any early return
   const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await register({ nome: nome.trim(), email: email.trim(), password });
-    void navigate('/dashboard');
+    const response = await register({ nome: nome.trim(), email: email.trim(), password });
+    const role = response?.data?.user?.role;
+    void navigate(role ? getPostAuthPath(role) : '/dashboard');
   });
 
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+  if (!isLoading && isAuthenticated && user) {
+    return <Navigate to={getPostAuthPath(user.role)} replace />;
   }
 
   const runValidation = (nextNome = nome, nextEmail = email, nextPassword = password) =>

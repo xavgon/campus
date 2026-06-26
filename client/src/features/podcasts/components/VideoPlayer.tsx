@@ -1,25 +1,26 @@
 import { useRef } from 'react';
 import { MediaSeekBar } from '@/features/podcasts/components/MediaSeekBar';
+import { MediaTransportControls } from '@/features/podcasts/components/MediaTransportControls';
 import {
   FullscreenIcon,
   PauseIcon,
   PlayIcon,
-  VolumeIcon,
-  VolumeMutedIcon,
 } from '@/features/podcasts/components/MediaPlayerIcons';
 import { useMediaElement } from '@/features/podcasts/hooks/useMediaElement';
+import { useMediaKeyboard } from '@/features/podcasts/hooks/useMediaKeyboard';
 import { formatPlayerTime } from '@/features/podcasts/utils/mediaPlayer';
-
-const SKIP_SECONDS = 10;
+import { PLAYER_COPY } from '@/shared/copy/campusMessages';
 
 interface VideoPlayerProps {
   src: string;
   title: string;
   variant?: 'full' | 'compact';
   poster?: string;
+  knownDurationSeconds?: number;
 }
 
-export const VideoPlayer = ({ src, title, variant = 'full', poster }: VideoPlayerProps) => {
+export const VideoPlayer = ({ src, title, variant = 'full', poster, knownDurationSeconds }: VideoPlayerProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const {
@@ -36,7 +37,17 @@ export const VideoPlayer = ({ src, title, variant = 'full', poster }: VideoPlaye
     onSeek,
     onVolumeChange,
     toggleMute,
-  } = useMediaElement(videoRef, src);
+  } = useMediaElement(videoRef, src, knownDurationSeconds);
+
+  useMediaKeyboard(containerRef, {
+    togglePlay,
+    stop,
+    skip,
+    toggleMute,
+    onVolumeChange,
+    volume,
+    disabled: Boolean(error),
+  });
 
   const isCompact = variant === 'compact';
 
@@ -50,8 +61,22 @@ export const VideoPlayer = ({ src, title, variant = 'full', poster }: VideoPlaye
     void frame.requestFullscreen?.();
   };
 
+  const fullscreenButton = (
+    <button
+      type="button"
+      className="campus-media-player__icon-btn ml-auto"
+      onClick={toggleFullscreen}
+      aria-label={PLAYER_COPY.fullscreen}
+      disabled={Boolean(error)}
+    >
+      <FullscreenIcon />
+    </button>
+  );
+
   return (
     <div
+      ref={containerRef}
+      tabIndex={0}
       className={`campus-media-player campus-video-player ${isCompact ? 'campus-media-player--compact campus-video-player--compact' : ''}`}
       aria-label={`Leitor de vídeo: ${title}`}
       onClick={(event) => event.stopPropagation()}
@@ -71,7 +96,7 @@ export const VideoPlayer = ({ src, title, variant = 'full', poster }: VideoPlaye
             type="button"
             className={`campus-video-player__overlay-play ${isPlaying ? 'pointer-events-none opacity-0' : ''}`}
             onClick={togglePlay}
-            aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
+            aria-label={isPlaying ? PLAYER_COPY.pause : PLAYER_COPY.play}
             aria-hidden={isPlaying}
             tabIndex={isPlaying ? -1 : 0}
           >
@@ -94,35 +119,52 @@ export const VideoPlayer = ({ src, title, variant = 'full', poster }: VideoPlaye
 
       <div className={isCompact ? 'campus-video-player__compact-bar' : 'campus-video-player__bar'}>
         {isCompact ? (
-          <div className="campus-media-player__compact-row">
-            <button
-              type="button"
-              className="campus-media-player__play"
-              onClick={togglePlay}
-              aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
-              disabled={Boolean(error)}
-            >
-              {isLoading && !error ? (
-                <span className="campus-media-player__spinner" aria-hidden />
-              ) : isPlaying ? (
-                <PauseIcon />
-              ) : (
-                <PlayIcon />
-              )}
-            </button>
+          <div className="campus-media-player__compact-stack">
+            <div className="campus-media-player__compact-row">
+              <button
+                type="button"
+                className="campus-media-player__play"
+                onClick={togglePlay}
+                aria-label={isPlaying ? PLAYER_COPY.pause : PLAYER_COPY.play}
+                disabled={Boolean(error)}
+              >
+                {isLoading && !error ? (
+                  <span className="campus-media-player__spinner" aria-hidden />
+                ) : isPlaying ? (
+                  <PauseIcon />
+                ) : (
+                  <PlayIcon />
+                )}
+              </button>
 
-            <MediaSeekBar
-              currentTime={currentTime}
-              duration={duration}
-              progress={progress}
-              disabled={Boolean(error)}
-              onSeek={onSeek}
-              className="min-w-0 flex-1"
+              <MediaSeekBar
+                currentTime={currentTime}
+                duration={duration}
+                progress={progress}
+                disabled={Boolean(error)}
+                onSeek={onSeek}
+                className="min-w-0 flex-1"
+              />
+
+              <span className="campus-media-player__time-compact">
+                {formatPlayerTime(currentTime)} / {formatPlayerTime(duration)}
+              </span>
+            </div>
+
+            <MediaTransportControls
+              variant="compact"
+              playStyle="icon"
+              isPlaying={isPlaying}
+              isLoading={isLoading}
+              error={error}
+              volume={volume}
+              togglePlay={togglePlay}
+              stop={stop}
+              skip={skip}
+              onVolumeChange={onVolumeChange}
+              toggleMute={toggleMute}
+              trailing={fullscreenButton}
             />
-
-            <span className="campus-media-player__time-compact">
-              {formatPlayerTime(currentTime)} / {formatPlayerTime(duration)}
-            </span>
           </div>
         ) : (
           <>
@@ -135,90 +177,30 @@ export const VideoPlayer = ({ src, title, variant = 'full', poster }: VideoPlaye
             />
 
             <div className="campus-media-player__controls campus-video-player__controls">
-              <button
-                type="button"
-                className="campus-media-player__play campus-media-player__play--bar"
-                onClick={togglePlay}
-                aria-label={isPlaying ? 'Pausar' : 'Reproduzir'}
-                disabled={Boolean(error)}
-              >
-                {isLoading && !error ? (
-                  <span className="campus-media-player__spinner" aria-hidden />
-                ) : isPlaying ? (
-                  <PauseIcon />
-                ) : (
-                  <PlayIcon />
-                )}
-              </button>
-
-              <span className="campus-media-player__time-compact">
-                {formatPlayerTime(currentTime)} / {formatPlayerTime(duration)}
-              </span>
-
-              <button
-                type="button"
-                className="campus-media-player__btn"
-                onClick={() => skip(-SKIP_SECONDS)}
-                aria-label={`Retroceder ${SKIP_SECONDS} segundos`}
-                disabled={Boolean(error)}
-              >
-                −{SKIP_SECONDS}s
-              </button>
-
-              <button
-                type="button"
-                className="campus-media-player__btn"
-                onClick={stop}
-                aria-label="Parar"
-                disabled={Boolean(error)}
-              >
-                Stop
-              </button>
-
-              <button
-                type="button"
-                className="campus-media-player__btn"
-                onClick={() => skip(SKIP_SECONDS)}
-                aria-label={`Avançar ${SKIP_SECONDS} segundos`}
-                disabled={Boolean(error)}
-              >
-                +{SKIP_SECONDS}s
-              </button>
-
-              <label className="campus-media-player__volume">
-                <span className="sr-only">Volume</span>
-                <button
-                  type="button"
-                  className="campus-media-player__icon-btn"
-                  onClick={toggleMute}
-                  aria-label={volume > 0 ? 'Silenciar' : 'Activar som'}
-                  disabled={Boolean(error)}
-                >
-                  {volume > 0 ? <VolumeIcon /> : <VolumeMutedIcon />}
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={volume}
-                  onChange={(e) => onVolumeChange(Number(e.target.value))}
-                  className="campus-media-player__volume-slider"
-                  aria-label="Volume"
-                  disabled={Boolean(error)}
-                />
-              </label>
-
-              <button
-                type="button"
-                className="campus-media-player__icon-btn ml-auto"
-                onClick={toggleFullscreen}
-                aria-label="Ecrã inteiro"
-                disabled={Boolean(error)}
-              >
-                <FullscreenIcon />
-              </button>
+              <MediaTransportControls
+                variant="full"
+                playStyle="icon"
+                isPlaying={isPlaying}
+                isLoading={isLoading}
+                error={error}
+                volume={volume}
+                togglePlay={togglePlay}
+                stop={stop}
+                skip={skip}
+                onVolumeChange={onVolumeChange}
+                toggleMute={toggleMute}
+                trailing={
+                  <>
+                    <span className="campus-media-player__time-compact">
+                      {formatPlayerTime(currentTime)} / {formatPlayerTime(duration)}
+                    </span>
+                    {fullscreenButton}
+                  </>
+                }
+              />
             </div>
+
+            <p className="campus-media-player__hint">{PLAYER_COPY.keyboardHint}</p>
           </>
         )}
       </div>

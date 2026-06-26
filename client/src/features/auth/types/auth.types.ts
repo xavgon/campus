@@ -1,5 +1,22 @@
 export type UserRole = 'user' | 'creator' | 'admin';
 
+export type DeviceAccessMode = 'certificate' | 'allowlist';
+
+export interface DeviceAccess {
+  mode: DeviceAccessMode;
+  cn: string | null;
+  fingerprint: string | null;
+}
+
+export interface AccessInfo {
+  user: User;
+  deviceAccess: DeviceAccess;
+  layers: {
+    device: DeviceAccessMode;
+    user: 'jwt';
+  };
+}
+
 export interface User {
   id: string;
   nome: string;
@@ -12,6 +29,14 @@ export interface User {
 export interface AuthPayload {
   token: string;
   user: User;
+  deviceAccess?: DeviceAccess;
+}
+
+export interface UserActivityRow {
+  id: number;
+  action: string;
+  cert_cn: string | null;
+  created_at: string;
 }
 
 export interface LoginCredentials {

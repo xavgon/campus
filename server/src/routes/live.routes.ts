@@ -1,7 +1,8 @@
 import path from 'path';
 import { Router, Request, Response } from 'express';
+import * as liveController from '../controllers/live.controller';
 import { getActiveSessions } from '../live/live.gateway';
-import { getCompletedRecordings, getRecordingById } from '../live/live.recorder';
+import { getRecordingById } from '../live/live.recorder';
 import { AppError } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth.middleware';
 import { requireCreator } from '../middleware/requireCreator';
@@ -55,14 +56,20 @@ liveRouter.get(
   }),
 );
 
-// GET /api/live/recordings — gravações concluídas
+// GET /api/live/recordings — gravações concluídas (servidor FFmpeg)
 liveRouter.get(
   '/recordings',
   requireAuth,
-  asyncHandler(async (_req: Request, res: Response) => {
-    const recordings = getCompletedRecordings();
-    sendSuccess(res, { recordings, total: recordings.length });
-  }),
+  requireCreator,
+  asyncHandler(liveController.listRecordings),
+);
+
+// POST /api/live/recordings/:id/publish — gravação live → episódio VOD
+liveRouter.post(
+  '/recordings/:id/publish',
+  requireAuth,
+  requireCreator,
+  asyncHandler(liveController.publishRecording),
 );
 
 // GET /api/live/recordings/:id/audio — download do áudio gravado

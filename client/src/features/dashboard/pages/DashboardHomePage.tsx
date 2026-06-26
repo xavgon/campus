@@ -69,6 +69,11 @@ export const DashboardHomePage = () => {
 
       {hasEpisodes ? (
         <DashboardOverviewStats {...stats} />
+      ) : isAdminUser(user) ? (
+        <ProfileNotice
+          title="Painel de administração"
+          message="Como administrador, moderas a plataforma no painel Admin. A biblioteca pessoal mostra episódios de toda a comunidade — não precisas de publicar conteúdo."
+        />
       ) : (
         <ProfileNotice
           title="Começa a publicar"

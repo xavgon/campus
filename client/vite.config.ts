@@ -13,7 +13,9 @@ const serverCertCrt = path.resolve(__dirname, '../server/certs/servidor.crt');
 // O proxy apresenta este certificado ao servidor em nome do browser.
 const proxyCertKey = path.resolve(__dirname, '../server/certs/client.key');
 const proxyCertCrt = path.resolve(__dirname, '../server/certs/client.crt');
+const campusCaCrt = path.resolve(__dirname, '../server/certs/ca.crt');
 const hasProxyCert = fs.existsSync(proxyCertKey) && fs.existsSync(proxyCertCrt);
+const hasCampusCa = fs.existsSync(campusCaCrt);
 
 /** HTTPS no browser (Vite) — opcional; certs em client/certs/ */
 const hasClientHttps = fs.existsSync(clientCertKey) && fs.existsSync(clientCertCrt);
@@ -25,6 +27,12 @@ const apiTarget = hasServerTls ? 'https://localhost:3001' : 'http://localhost:30
 const proxyCertOptions = hasProxyCert
   ? { key: fs.readFileSync(proxyCertKey), cert: fs.readFileSync(proxyCertCrt) }
   : {};
+
+// Task 1 — verificar servidor contra CA-CAMPUS (não usar secure: false em produção)
+const proxyTlsOptions =
+  hasServerTls && hasCampusCa
+    ? { secure: true, ca: fs.readFileSync(campusCaCrt) }
+    : { secure: false };
 
 /** Vite injecta crossorigin nos assets; com file:// no Electron o bundle não carrega. */
 const stripCrossoriginForElectron = {
@@ -56,20 +64,20 @@ export default defineConfig({
       '/api': {
         target: apiTarget,
         changeOrigin: true,
-        secure: false,
+        ...proxyTlsOptions,
         ...proxyCertOptions,
       },
       '/uploads': {
         target: apiTarget,
         changeOrigin: true,
-        secure: false,
+        ...proxyTlsOptions,
         ...proxyCertOptions,
       },
       '/live': {
         target: apiTarget,
         ws: true,
         changeOrigin: true,
-        secure: false,
+        ...proxyTlsOptions,
         ...proxyCertOptions,
       },
     },

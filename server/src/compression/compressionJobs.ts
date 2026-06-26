@@ -4,6 +4,7 @@ import {
   findPodcastById,
   updatePodcastCompressedMedia,
 } from '../models/podcast.model';
+import { formatFromMediaPath } from '../utils/mediaFormat';
 import {
   notifyPodcastCatalogReady,
   notifyPodcastCompressionFailed,
@@ -68,7 +69,8 @@ const completeJob = async (
   result: CompressionResult,
   compressedUrl: string,
 ): Promise<void> => {
-  await updatePodcastCompressedMedia(podcastId, media, compressedUrl);
+  const audioFormat = media === 'audio' ? formatFromMediaPath(compressedUrl) : null;
+  await updatePodcastCompressedMedia(podcastId, media, compressedUrl, audioFormat);
 
   const entry = pending.get(podcastId);
   if (!entry) {

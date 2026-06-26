@@ -1,7 +1,8 @@
-const { app, BrowserWindow, shell, ipcMain, session } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { configureWindowMenu } = require('./menu.cjs');
+const { setupCampusTls } = require('./tls.cjs');
 const {
   registerCampusScheme,
   installCampusProtocol,
@@ -167,14 +168,7 @@ if (!gotSingleInstanceLock) {
       await installCampusProtocol();
     }
 
-    session.defaultSession.setCertificateVerifyProc((request, callback) => {
-      const host = request.hostname ?? '';
-      if (host === 'localhost' || host === '127.0.0.1') {
-        callback(0);
-        return;
-      }
-      callback(-3);
-    });
+    setupCampusTls();
     createWindow();
   });
 } else {
@@ -189,14 +183,7 @@ if (!gotSingleInstanceLock) {
       await installCampusProtocol();
     }
 
-    session.defaultSession.setCertificateVerifyProc((request, callback) => {
-      const host = request.hostname ?? '';
-      if (host === 'localhost' || host === '127.0.0.1') {
-        callback(0);
-        return;
-      }
-      callback(-3);
-    });
+    setupCampusTls();
     createWindow();
   });
 

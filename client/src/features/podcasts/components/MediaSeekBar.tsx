@@ -1,3 +1,5 @@
+import { PLAYER_COPY } from '@/shared/copy/campusMessages';
+
 interface MediaSeekBarProps {
   currentTime: number;
   duration: number;
@@ -24,7 +26,7 @@ export const MediaSeekBar = ({
       value={currentTime}
       onChange={(e) => onSeek(Number(e.target.value))}
       className="campus-media-seek__input"
-      aria-label="Posição na faixa"
+      aria-label={PLAYER_COPY.seek}
       disabled={disabled || !duration}
     />
     <div className="campus-media-seek__track" aria-hidden>

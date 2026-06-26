@@ -70,5 +70,43 @@ export const fetchHealth = async () => {
   return data;
 };
 
+export interface ApiIndexData {
+  name: string;
+  version: string;
+  description: string;
+  baseUrl: string;
+  protocol: string;
+  envelope: {
+    success: { success: true; message: string; data: string };
+    error: { success: false; message: string; data: null };
+  };
+  authentication: {
+    type: string;
+    header: string;
+    streamQuery: string;
+  };
+  resources: Array<{
+    group: string;
+    basePath: string;
+    endpoints: Array<{
+      method: string;
+      path: string;
+      auth: boolean | string;
+      description: string;
+    }>;
+  }>;
+  websocket: {
+    path: string;
+    query: string;
+    description: string;
+  };
+}
+
+/** RF14 — Metadados e recursos da API REST. */
+export const fetchApiIndex = async () => {
+  const { data } = await api.get<ApiResponse<ApiIndexData>>('');
+  return data;
+};
+
 export { getApiErrorMessage, showApiErrorToast, showApiToast } from '@/shared/api/apiErrors';
 export { humanizeServerMessage, ERROR_TITLES } from '@/shared/copy/campusMessages';

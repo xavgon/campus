@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth';
 import { canPublishPodcasts } from '@/features/auth/utils/canPublish';
 import { PodcastCard } from '@/features/podcasts/components/PodcastCard';
 import { PodcastListSkeleton } from '@/features/podcasts/components/PodcastListSkeleton';
+import { PodcastPagination } from '@/features/podcasts/components/PodcastPagination';
 import { PodcastsEmptyState } from '@/features/podcasts/components/PodcastsEmptyState';
 import { PodcastsStats } from '@/features/podcasts/components/PodcastsStats';
 import { PodcastsToolbar } from '@/features/podcasts/components/PodcastsToolbar';
@@ -10,7 +11,7 @@ import { usePodcastCategories } from '@/features/podcasts/hooks/usePodcastCatego
 import { usePodcastsLibrary } from '@/features/podcasts/hooks/usePodcastsLibrary';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
-import { ERROR_TITLES } from '@/shared/copy/campusMessages';
+import { ERROR_TITLES, SEARCH_COPY } from '@/shared/copy/campusMessages';
 import { Alert } from '@/shared/components/campus/Alert';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -23,6 +24,9 @@ export const PodcastsLibraryPage = () => {
   const {
     filtered,
     podcasts,
+    pagination,
+    page,
+    setPage,
     isLoading,
     isFetching,
     isSearching,
@@ -67,9 +71,10 @@ export const PodcastsLibraryPage = () => {
           filters={filters}
           categories={categories}
           categoriesLoading={categoriesLoading}
-          resultCount={filtered.length}
+          resultCount={pagination.total}
           hasActiveFilters={hasActiveFilters}
           isSearching={isSearching || (isFetching && podcasts.length > 0)}
+          searchPlaceholder={SEARCH_COPY.placeholder}
           onSearchChange={setSearch}
           onCategoryChange={setCategoryId}
           onSortChange={setSort}
@@ -88,10 +93,19 @@ export const PodcastsLibraryPage = () => {
       )}
 
       {!isLoading && filtered.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((podcast) => (
-            <PodcastCard key={podcast.id} podcast={podcast} />
-          ))}
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((podcast) => (
+              <PodcastCard key={podcast.id} podcast={podcast} />
+            ))}
+          </div>
+          <PodcastPagination
+            page={page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            onPageChange={setPage}
+            disabled={isFetching}
+          />
         </div>
       )}
     </div>

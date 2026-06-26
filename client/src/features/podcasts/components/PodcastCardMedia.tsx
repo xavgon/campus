@@ -26,12 +26,20 @@ export const PodcastCardMedia = ({ podcast }: PodcastCardMediaProps) => {
         title={podcast.title}
         variant="compact"
         poster={podcast.coverUrl}
+        knownDurationSeconds={podcast.durationSeconds}
       />
     );
   }
 
   if (audioSrc) {
-    return <AudioPlayer src={audioSrc} title={podcast.title} variant="compact" />;
+    return (
+      <AudioPlayer
+        src={audioSrc}
+        title={podcast.title}
+        variant="compact"
+        knownDurationSeconds={podcast.durationSeconds}
+      />
+    );
   }
 
   return null;

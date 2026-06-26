@@ -15,9 +15,9 @@ export const useDashboardSummary = () => {
 
     const load = async () => {
       try {
-        const items = await fetchPodcasts();
+        const result = await fetchPodcasts({ limit: 100, page: 1 });
         if (cancelled) return;
-        setPodcasts(items);
+        setPodcasts(result.podcasts);
       } catch {
         if (cancelled) return;
         setPodcasts([]);

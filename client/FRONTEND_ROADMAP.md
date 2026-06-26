@@ -19,7 +19,7 @@ Plano de evolução da interface **React 19 + Vite + Tailwind 4 + React Router 7
 | **Design system** | `AuthPanel`, `Field`, `TextAreaField`, `Alert`, `Modal`, `RouteTransition`, `campus-panel`, `DesktopTitleBar` |
 | **Auth (Módulo 1)** | `AuthContext`, `ProtectedRoute`, `CreatorRoute`, validação, skeleton, «Lembrar email» |
 | **Recuperação password** | `ForgotPasswordModal` + página `/reset-password` |
-| **Papel criador (RF12)** | Nav condicional, publicar e broadcast só para `creator`/`admin` |
+| **Papel criador (RF12)** | Nav condicional, publicar e broadcast só para `creator` |
 | **Nav autenticada** | `CampusNav`, indicador deslizante, `NavBrand`, `NavUserMenu`, item «Ao vivo» |
 | **Dashboard** | Boas-vindas, stats, episódios recentes, ligados agora, atalhos admin e live |
 | **Podcasts** | Biblioteca API, pesquisa debounced (RF09), filtros, detalhe, player, download, compressão |

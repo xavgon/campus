@@ -16,11 +16,13 @@ export interface Recording {
   id: string;
   title: string;
   mediaType: MediaType;
-  audioFile?: string; // caminho relativo para servir via HTTP
+  hostUserId: string;
+  audioFile?: string;
   videoFile?: string;
   startedAt: string;
   endedAt: string;
   durationSeconds: number;
+  publishedPodcastId?: string;
 }
 
 const completed = new Map<string, Recording>();
@@ -45,6 +47,7 @@ export class LiveRecorder {
     private readonly sessionId: string,
     private readonly title: string,
     private readonly mediaType: MediaType,
+    private readonly hostUserId: string,
   ) {
     this.startedAt = new Date();
 
@@ -157,6 +160,7 @@ export class LiveRecorder {
       id: this.sessionId,
       title: this.title,
       mediaType: this.mediaType,
+      hostUserId: this.hostUserId,
       audioFile: this.audioRelPath,
       videoFile: this.videoRelPath,
       startedAt: this.startedAt.toISOString(),

@@ -13,8 +13,24 @@ const parseBoolean = (value: string | undefined, fallback = false): boolean => {
   return value === '1' || value.toLowerCase() === 'true' || value.toLowerCase() === 'yes';
 };
 
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+
+/** Task 1 — Em modo estrito não há excepção automática de localhost (só allowlist admin). */
+const mtlsStrict =
+  process.env.MTLS_STRICT != null && process.env.MTLS_STRICT !== ''
+    ? parseBoolean(process.env.MTLS_STRICT)
+    : nodeEnv === 'production';
+
+/** Task 4 — Só aceita certs registados na CA (além de assinatura válida). */
+const caRequireRegistration =
+  process.env.CA_REQUIRE_REGISTRATION != null && process.env.CA_REQUIRE_REGISTRATION !== ''
+    ? parseBoolean(process.env.CA_REQUIRE_REGISTRATION)
+    : false;
+
 export const config = {
-  nodeEnv: process.env.NODE_ENV ?? 'development',
+  nodeEnv,
+  mtlsStrict,
+  caRequireRegistration,
   port: parseNumber(process.env.PORT, 3001),
   databaseUrl: process.env.DATABASE_URL ?? '',
   jwtSecret: process.env.JWT_SECRET ?? 'campus-dev-secret-change-in-production',

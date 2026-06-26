@@ -73,3 +73,29 @@ export const isFingerprintRevoked = async (fingerprint: string): Promise<boolean
   );
   return result.rows.length > 0;
 };
+
+/** Task 4 — certificado emitido e activo na CA-CAMPUS. */
+export const isFingerprintRegistered = async (fingerprint: string): Promise<boolean> => {
+  const result = await getPool().query(
+    `SELECT 1 FROM issued_certs WHERE fingerprint = $1 AND revoked = FALSE LIMIT 1`,
+    [fingerprint],
+  );
+  return result.rows.length > 0;
+};
+
+export const findCertById = async (id: number): Promise<IssuedCert | null> => {
+  const result = await getPool().query(
+    `SELECT id, cn, fingerprint, issued_to, issued_at, expires_at,
+            revoked, revoked_at, revoked_reason
+     FROM issued_certs WHERE id = $1`,
+    [id],
+  );
+  if (!result.rows[0]) return null;
+  const r = result.rows[0];
+  return {
+    ...r,
+    issued_at: r.issued_at instanceof Date ? r.issued_at.toISOString() : String(r.issued_at),
+    expires_at: r.expires_at ? (r.expires_at instanceof Date ? r.expires_at.toISOString() : String(r.expires_at)) : null,
+    revoked_at: r.revoked_at ? (r.revoked_at instanceof Date ? r.revoked_at.toISOString() : String(r.revoked_at)) : null,
+  };
+};

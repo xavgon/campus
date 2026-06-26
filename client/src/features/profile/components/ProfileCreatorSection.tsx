@@ -93,7 +93,7 @@ export const ProfileCreatorSection = ({
       {isAdmin && (
         <ProfileNotice
           title="Administrador"
-          message="A tua conta de administrador já inclui permissões de criador — publicar, editar e transmitir ao vivo."
+          message="A tua conta gere a plataforma no painel Admin — utilizadores, publicações, transmissões e segurança. A criação de conteúdo é exclusiva do papel criador."
           variant="info"
         />
       )}

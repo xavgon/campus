@@ -10,6 +10,9 @@ import {
 import type { AdminNotification, AdminNotificationSeverity } from '@/features/admin/types/admin.types';
 import { formatAdminDate } from '@/features/admin/utils/formatAdminDate';
 import { getApiErrorMessage } from '@/shared/api/client';
+import { CampusPagination } from '@/shared/components/campus/CampusPagination';
+import { LIST_PAGE_SIZE } from '@/shared/constants/pagination';
+import { useClientPagination } from '@/shared/hooks/useClientPagination';
 import { Button } from '@/shared/components/ui/Button';
 
 const severityLabel: Record<AdminNotificationSeverity, string> = {
@@ -37,6 +40,12 @@ export const AdminNotificationsPage = () => {
   }, [load]);
 
   const unread = notifications.filter((item) => !item.read_at).length;
+  const {
+    items: visibleNotifications,
+    page,
+    setPage,
+    totalPages,
+  } = useClientPagination(notifications, LIST_PAGE_SIZE);
 
   const onMarkAll = async () => {
     try {
@@ -84,7 +93,8 @@ export const AdminNotificationsPage = () => {
             Ainda não há notificações registadas.
           </p>
         ) : (
-          notifications.map((notification) => (
+          <>
+            {visibleNotifications.map((notification) => (
             <article
               key={notification.id}
               className={`rounded-none border px-4 py-4 sm:px-5 ${
@@ -134,7 +144,16 @@ export const AdminNotificationsPage = () => {
                 </div>
               </div>
             </article>
-          ))
+            ))}
+
+            <CampusPagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              ariaLabel="Paginação de notificações"
+              className="border-t border-campus-border/50 pt-4"
+            />
+          </>
         )}
       </div>
     </section>

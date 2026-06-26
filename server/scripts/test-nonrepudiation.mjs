@@ -113,6 +113,21 @@ if (loginLog) {
   check('Assinatura válida (verificada pelo servidor)', loginLog.signature_valid === true, `signature_valid: ${loginLog.signature_valid}`);
 }
 
+const publishLog = logs.find((l) => l.action?.startsWith('Publicou:'));
+const downloadLog = logs.find((l) => l.action?.startsWith('Download:'));
+if (publishLog) {
+  console.log('\nLog de publicação encontrado:');
+  check('Publicação assinada', publishLog.signature_valid === true, publishLog.action);
+} else {
+  console.log('\nℹ️  Sem log de publicação ainda (publica um episódio como creator para testar).');
+}
+if (downloadLog) {
+  console.log('\nLog de download encontrado:');
+  check('Download assinado', downloadLog.signature_valid === true, downloadLog.action);
+} else {
+  console.log('ℹ️  Sem log de download ainda (descarrega um episódio para testar).');
+}
+
 console.log('\n══════════════════════════════════════════════');
 console.log('Legenda:');
 console.log('  ✅ = verificação passou');

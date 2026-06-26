@@ -14,6 +14,24 @@ export const PauseIcon = ({ className }: IconProps) => (
   </svg>
 );
 
+export const StopIcon = ({ className }: IconProps) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M6 6h12v12H6V6Z" />
+  </svg>
+);
+
+export const SkipBackIcon = ({ className }: IconProps) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M11 5.14v13.72a1 1 0 0 0-1.5.86L2.46 12.86a1 1 0 0 1 0-1.72L9.5 4.28A1 1 0 0 1 11 5.14ZM20 5v14h-2V5h2Z" />
+  </svg>
+);
+
+export const SkipForwardIcon = ({ className }: IconProps) => (
+  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M13 5.14v13.72a1 1 0 0 1-1.5.86L4.46 12.86a1 1 0 0 0 0-1.72L11.5 4.28A1 1 0 0 1 13 5.14ZM22 5v14h-2V5h2Z" />
+  </svg>
+);
+
 export const VolumeIcon = ({ className }: IconProps) => (
   <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
     <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinejoin="round" />

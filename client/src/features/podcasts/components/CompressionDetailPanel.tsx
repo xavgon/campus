@@ -6,6 +6,8 @@ import {
   getCompressionState,
 } from '@/features/podcasts/utils/compressionState';
 import { formatFileSize } from '@/features/podcasts/utils/formatFileSize';
+import { getCompressionProfileLabel, getExpectedCompressionProfile } from '@/features/podcasts/utils/formatCompressionProfile';
+import { formatMediaFormatLabel } from '@/features/podcasts/utils/formatMediaFormat';
 import { hasPodcastVideo } from '@/features/podcasts/services/podcast.service';
 
 interface CompressionDetailPanelProps {
@@ -24,6 +26,10 @@ export const CompressionDetailPanel = ({ podcast, progress }: CompressionDetailP
       ? Math.max(0, Math.min(100, podcast.compressionRatio ?? 0))
       : 0;
   const ffmpegPercent = progress?.active ? progress.overall : 0;
+  const compressionProfile = getCompressionProfileLabel(
+    podcast.mediaFormat,
+    withVideo ? 'video' : 'audio',
+  );
 
   return (
     <section className="campus-panel space-y-4 p-5" aria-label="Estado da compressão">
@@ -47,6 +53,12 @@ export const CompressionDetailPanel = ({ podcast, progress }: CompressionDetailP
             </span>
             <div className="space-y-1">
               <p className="text-sm font-semibold text-emerald-300">Compressão concluída</p>
+              {compressionProfile && (
+                <p className="text-sm text-campus-foreground">
+                  Formato comprimido:{' '}
+                  <span className="font-semibold text-emerald-200">{compressionProfile}</span>
+                </p>
+              )}
               {savedBytes > 0 ? (
                 <p className="text-xs text-campus-accent">
                   Poupança de <span className="font-semibold text-campus-foreground">−{savedPercent}%</span>{' '}
@@ -73,6 +85,30 @@ export const CompressionDetailPanel = ({ podcast, progress }: CompressionDetailP
                 {formatFileSize(podcast.compressedSize!)}
               </dd>
             </div>
+            {podcast.mediaFormat && (
+              <div className="rounded-none border border-campus-border/50 bg-black/20 px-3 py-2">
+                <dt className="text-xs text-campus-muted">Codec</dt>
+                <dd className="font-semibold text-campus-foreground">
+                  {formatMediaFormatLabel(podcast.mediaFormat)}
+                </dd>
+              </div>
+            )}
+            {podcast.compressionRatio != null && (
+              <div className="rounded-none border border-campus-border/50 bg-black/20 px-3 py-2">
+                <dt className="text-xs text-campus-muted">Redução</dt>
+                <dd className="font-semibold text-campus-foreground">
+                  {podcast.compressionRatio > 0 ? `−${podcast.compressionRatio}%` : '—'}
+                </dd>
+              </div>
+            )}
+            {podcast.processingTimeMs != null && podcast.processingTimeMs > 0 && (
+              <div className="rounded-none border border-campus-border/50 bg-black/20 px-3 py-2 sm:col-span-2">
+                <dt className="text-xs text-campus-muted">Tempo FFmpeg</dt>
+                <dd className="font-semibold text-campus-foreground">
+                  {(podcast.processingTimeMs / 1000).toFixed(1)} s
+                </dd>
+              </div>
+            )}
           </dl>
         </div>
       )}
@@ -117,9 +153,17 @@ export const CompressionDetailPanel = ({ podcast, progress }: CompressionDetailP
           )}
 
           {podcast.originalSize != null && (
-            <p className="text-xs text-campus-muted">
-              Tamanho enviado: {formatFileSize(podcast.originalSize)}
-            </p>
+            <div className="space-y-1 text-xs text-campus-muted">
+              <p>Tamanho enviado: {formatFileSize(podcast.originalSize)}</p>
+              {!withVideo && (
+                <p>
+                  Destino FFmpeg:{' '}
+                  <span className="font-medium text-campus-foreground">
+                    {getExpectedCompressionProfile(podcast.mediaFormat)}
+                  </span>
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}

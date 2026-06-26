@@ -2,7 +2,11 @@ import { api } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types';
 import type {
   AdminCategory,
+  AdminCertRow,
+  AdminDownloadRow,
   AdminLogRow,
+  AdminPiracyAlertRow,
+  AdminAllowlistRow,
   AdminNotification,
   AdminOverview,
   AdminPodcastRow,
@@ -139,3 +143,67 @@ export const updateAdminStream = async (
 export const deleteAdminStream = async (id: string): Promise<void> => {
   await api.delete(`/admin/streams/${id}`);
 };
+
+export const fetchAdminCerts = async (): Promise<AdminCertRow[]> => {
+  const { data } = await api.get<ApiResponse<{ certs: AdminCertRow[] }>>('/admin/certs');
+  return data.data.certs;
+};
+
+export const registerAdminCert = async (payload: {
+  cn: string;
+  issued_to: string;
+  expires_at?: string | null;
+  fingerprint?: string | null;
+}): Promise<AdminCertRow> => {
+  const { data } = await api.post<ApiResponse<{ cert: AdminCertRow }>>('/admin/certs', payload);
+  return data.data.cert;
+};
+
+export const revokeAdminCert = async (id: number, reason: string): Promise<AdminCertRow> => {
+  const { data } = await api.delete<ApiResponse<{ cert: AdminCertRow }>>(`/admin/certs/${id}/revoke`, {
+    data: { reason },
+  });
+  return data.data.cert;
+};
+
+export const fetchAdminDownloads = async (): Promise<AdminDownloadRow[]> => {
+  const { data } = await api.get<ApiResponse<{ downloads: AdminDownloadRow[] }>>('/admin/downloads');
+  return data.data.downloads;
+};
+
+export const fetchAdminPiracyAlerts = async (): Promise<AdminPiracyAlertRow[]> => {
+  const { data } = await api.get<ApiResponse<{ alerts: AdminPiracyAlertRow[] }>>('/admin/piracy-alerts');
+  return data.data.alerts;
+};
+
+export const fetchAdminAllowlist = async (): Promise<AdminAllowlistRow[]> => {
+  const { data } = await api.get<ApiResponse<{ clients: ApiAllowlistClient[] }>>('/admin/allowlist');
+  return data.data.clients.map((client) => ({
+    ip: client.ip,
+    reason: client.reason,
+    addedAt: client.addedAt,
+  }));
+};
+
+export const addAdminAllowlistEntry = async (payload: {
+  ip: string;
+  reason: string;
+}): Promise<AdminAllowlistRow> => {
+  await api.post<ApiResponse<{ ip: string }>>('/admin/allowlist', payload);
+  const rows = await fetchAdminAllowlist();
+  const found = rows.find((row) => row.ip === payload.ip);
+  if (!found) {
+    return { ip: payload.ip, reason: payload.reason, addedAt: new Date().toISOString() };
+  }
+  return found;
+};
+
+export const removeAdminAllowlistEntry = async (ip: string): Promise<void> => {
+  await api.delete(`/admin/allowlist/${encodeURIComponent(ip)}`);
+};
+
+interface ApiAllowlistClient {
+  ip: string;
+  reason: string;
+  addedAt: string;
+}

@@ -1,4 +1,12 @@
-import type { LiveComment, LiveSession, ScheduledStream } from '@/features/live/types/live.types';
+import type {
+  LiveComment,
+  LiveSession,
+  ScheduledStream,
+  ServerLiveRecording,
+} from '@/features/live/types/live.types';
+import type { PodcastApi } from '@/features/podcasts/types/podcast.api';
+import type { Podcast } from '@/features/podcasts/types/podcast';
+import { mapPodcastFromApi } from '@/features/podcasts/utils/mapPodcast';
 import { api, SERVER_URL } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/types';
 import { getToken } from '@/shared/utils/storage';
@@ -49,4 +57,26 @@ export const buildLiveWebSocketUrl = (params: {
 
   const wsBase = SERVER_URL.replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:');
   return `${wsBase}/live?${query}`;
+};
+
+export const fetchServerLiveRecordings = async (): Promise<ServerLiveRecording[]> => {
+  const { data } = await api.get<ApiResponse<{ recordings: ServerLiveRecording[] }>>(
+    '/live/recordings',
+  );
+  return data.data.recordings;
+};
+
+export const publishServerLiveRecording = async (
+  recordingId: string,
+  input: { title: string; description?: string; categoryId?: string },
+): Promise<Podcast> => {
+  const body: Record<string, unknown> = { title: input.title.trim() };
+  if (input.description?.trim()) body.description = input.description.trim();
+  if (input.categoryId) body.category_id = Number(input.categoryId);
+
+  const { data } = await api.post<ApiResponse<{ podcast: PodcastApi }>>(
+    `/live/recordings/${recordingId}/publish`,
+    body,
+  );
+  return mapPodcastFromApi(data.data.podcast);
 };

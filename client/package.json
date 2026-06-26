@@ -34,6 +34,16 @@
       "electron/**/*",
       "!electron/icon.png"
     ],
+    "extraResources": [
+      {
+        "from": "../server/certs/ca.crt",
+        "to": "certs/ca.crt"
+      },
+      {
+        "from": "../server/certs/client.p12",
+        "to": "certs/client.p12"
+      }
+    ],
     "electronDownload": {
       "cache": ".electron-cache"
     },

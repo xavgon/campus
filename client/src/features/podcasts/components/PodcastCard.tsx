@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AuthorCertBadge } from '@/features/podcasts/components/AuthorCertBadge';
 import { CompressionBadge } from '@/features/podcasts/components/CompressionBadge';
 import { PodcastCardMedia } from '@/features/podcasts/components/PodcastCardMedia';
 import { PodcastCover } from '@/features/podcasts/components/PodcastCover';
@@ -6,6 +7,7 @@ import { PodcastStatusBadge } from '@/features/podcasts/components/PodcastStatus
 import type { Podcast } from '@/features/podcasts/types/podcast';
 import { canPlayPodcast, hasPodcastVideo } from '@/features/podcasts/services/podcast.service';
 import { getCompressionState } from '@/features/podcasts/utils/compressionState';
+import { getCompressionProfileLabel } from '@/features/podcasts/utils/formatCompressionProfile';
 import { formatDuration } from '@/features/podcasts/utils/formatDuration';
 import { formatPodcastDate } from '@/features/podcasts/utils/formatPodcastDate';
 
@@ -17,6 +19,10 @@ export const PodcastCard = ({ podcast }: PodcastCardProps) => {
   const withVideo = hasPodcastVideo(podcast);
   const playable = canPlayPodcast(podcast);
   const compressionState = getCompressionState(podcast);
+  const compressionLabel =
+    compressionState === 'complete'
+      ? getCompressionProfileLabel(podcast.mediaFormat, withVideo ? 'video' : 'audio')
+      : null;
 
   return (
     <article className="campus-panel group flex flex-col overflow-hidden transition hover:border-campus-primary/35">
@@ -34,6 +40,14 @@ export const PodcastCard = ({ podcast }: PodcastCardProps) => {
             </span>
             {compressionState !== 'complete' && compressionState !== 'pending' && (
               <CompressionBadge state={compressionState} />
+            )}
+            {compressionLabel && (
+              <span
+                className="max-w-[10rem] truncate rounded-none border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200 backdrop-blur-sm"
+                title={compressionLabel}
+              >
+                {compressionLabel}
+              </span>
             )}
           </div>
 
@@ -53,6 +67,15 @@ export const PodcastCard = ({ podcast }: PodcastCardProps) => {
             {podcast.categoryName}
           </p>
           <p className="mt-1 text-xs text-campus-muted">{podcast.authorName}</p>
+          {podcast.authorCertFingerprint && (
+            <div className="mt-1.5">
+              <AuthorCertBadge
+                cn={podcast.authorCertCn}
+                fingerprint={podcast.authorCertFingerprint}
+                compact
+              />
+            </div>
+          )}
           <h2 className="mt-1.5 line-clamp-2 text-base font-bold leading-snug text-campus-foreground transition group-hover:text-campus-primary">
             {podcast.title}
           </h2>

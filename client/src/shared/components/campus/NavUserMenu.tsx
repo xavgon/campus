@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import type { User } from '@/features/auth/types/auth.types';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
+import { NavManualLink } from '@/shared/components/campus/NavManualLink';
 import { NavUserName } from '@/shared/components/campus/NavUserName';
 
 interface NavUserMenuProps {
@@ -35,6 +36,8 @@ export const NavUserMenu = ({ user, onLogout }: NavUserMenuProps) => {
           </span>
         </span>
       </Link>
+
+      <NavManualLink />
 
       <button
         type="button"

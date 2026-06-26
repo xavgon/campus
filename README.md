@@ -14,10 +14,11 @@ Projeto académico · Multimédia 2026.
 | **Podcasts (API)** | ✅ | Listagem com pesquisa/filtros (debounce), upload multipart, download, streaming, catálogo público |
 | **Explorar** | ✅ | `/explorar` — catálogo público (`GET /podcasts/public`) sem login |
 | **Presença** | ✅ | Heartbeat + contador de utilizadores ligados no dashboard |
-| **Live (WebSocket)** | 🟡 Passo 2 | Hub `/live`, broadcast e ouvinte via WS `/live` (sessões em memória) |
+| **Live (WebSocket)** | ✅ | Hub `/live`, broadcast, ouvinte, gravações e VOD |
 | **Admin** | ✅ | Painel `/admin` — utilizadores, publicações, transmissões (BD), registo |
 | **Electron** | ✅ | Janela frameless, barra de título CAMPUS, ícone 256×256, instalador Windows |
 | **FFmpeg / compressão** | ✅ | Compressão áudio/vídeo, progresso real, badges na biblioteca |
+| **RF01–RF14** | ✅ | Requisitos funcionais com testes automatizados (`npm run test:all` no servidor) |
 
 > **Nota:** As transmissões do painel admin (`streams` na BD) e as sessões live WebSocket são sistemas distintos — ainda não estão unificados.
 
@@ -30,12 +31,13 @@ Final-Pro/
 │   ├── FRONTEND_ROADMAP.md   # Roadmap UI (versionado)
 │   └── README.md             # Guia do cliente
 ├── server/                   # Express 5 + TypeScript + PostgreSQL + ws
+├── .github/workflows/        # CI (testes RF + typecheck)
 ├── DOCUMENTATION.md          # API, rotas, BD, live, admin (versionado)
 ├── docs/                     # Documentação local (gitignored — cópia opcional)
 └── README.md                 # Este ficheiro
 ```
 
-Não existe `package.json` na raiz — os comandos `npm` correm em `client/` ou `server/`.
+Não é obrigatório `package.json` na raiz — os comandos `npm` correm em `client/` ou `server/`. Existe também um `package.json` na raiz com atalhos (`npm run test:all`, `npm run dev:server`, …).
 
 ## Identidade visual
 
@@ -48,7 +50,8 @@ Não existe `package.json` na raiz — os comandos `npm` correm em `client/` ou 
 
 - Node.js 20+
 - PostgreSQL 15+ (ou Neon)
-- FFmpeg (módulos de compressão, mais tarde)
+- FFmpeg (compressão de áudio/vídeo)
+- OpenSSL (certificados mTLS — `npm run certs:bootstrap` na pasta `server`)
 
 ## Arranque rápido
 
@@ -63,9 +66,10 @@ npm run db:migrate
 npm run dev
 ```
 
-- API: `http://localhost:3001`
+- API: `https://localhost:3001` (HTTPS + mTLS quando existem certificados em `server/certs/`)
+- Índice REST: `GET /api` (RF14 — descoberta de recursos)
 - Health: `GET /api/health`
-- WebSocket live: `ws://localhost:3001/live`
+- WebSocket live: `wss://localhost:3001/live`
 - Página de teste (dev): `http://localhost:3001/live-test`
 
 Em desenvolvimento, ao arrancar com `DATABASE_URL` definido, o servidor aplica **patches de schema** (`role` em `users`, tabela `streams`, categorias) e garante a conta admin.
@@ -106,7 +110,7 @@ npm run electron:dist         # instalador Windows em release/
 | Password | `Campus123` |
 
 - Criada/atualizada por `ensureDefaultAdmin` (arranque em dev) ou `npm run db:seed` na pasta `server`.
-- Papel `role = admin` na base de dados (admin também pode publicar e transmitir).
+- Papel `role = admin` na base de dados — **gestão da plataforma** no painel `/admin` (sem publicar nem transmitir).
 - Após migração ou alteração de papel, faz **logout e login** para o JWT reflectir o papel.
 
 Em `import.meta.env.DEV`, o login pré-preenche estas credenciais.
@@ -119,14 +123,16 @@ Para testar o papel **criador**, um utilizador pode activá-lo em **Perfil → C
 |------|--------|-----------|
 | `/` | Público | Home (web) · redirect em Electron |
 | `/explorar` | Público | Catálogo público de episódios comprimidos |
+| `/ajuda` | Público | Manual de utilizador (guias por papel) |
+| `/explorar/:id` | Público | Detalhe de episódio no catálogo público |
 | `/login`, `/register` | Público | Autenticação |
 | `/reset-password` | Público | Nova password com `?token=` |
 | `/dashboard` | Autenticado | Hub pessoal, stats, episódios recentes, ligados agora |
 | `/podcasts` | Autenticado | Biblioteca com pesquisa e filtros (API) |
 | `/podcasts/:id` | Autenticado | Detalhe e player |
-| `/podcasts/new` | **Criador / admin** | Publicar episódio (upload multipart) |
+| `/podcasts/new` | **Criador** | Publicar episódio (upload multipart) |
 | `/live` | Autenticado | Hub de transmissões activas |
-| `/live/broadcast` | **Criador / admin** | Iniciar transmissão (câmara/microfone) |
+| `/live/broadcast` | **Criador** | Iniciar transmissão (câmara/microfone) |
 | `/live/:id` | Autenticado | Assistir transmissão em curso |
 | `/profile` | Autenticado | Perfil e segurança |
 | `/admin` | **Admin** | Painel de gestão |
@@ -137,20 +143,21 @@ Para testar o papel **criador**, um utilizador pode activá-lo em **Perfil → C
 
 ## API REST (resumo)
 
-Base: `http://localhost:3001/api` · Autenticação: `Authorization: Bearer <token>`
+Base: `https://localhost:3001/api` · Autenticação: `Authorization: Bearer <token>`
 
 | Grupo | Endpoints principais |
 |-------|----------------------|
+| **Índice** | `GET /` — metadados e recursos da API (RF14) |
 | **Health** | `GET /health` |
 | **Auth** | `POST /auth/register`, `/login`, `GET /auth/profile`, `/forgot-password`, `/reset-password` |
 | **Podcasts** | `GET /podcasts`, `GET /podcasts/public`, `GET /podcasts/:id`, `POST /podcasts` (criador), `PATCH`/`DELETE`, `GET /podcasts/:id/download`, `GET /podcasts/:id/compression-progress` |
-| **Categorias** | `GET /categories` — público (formulários e explorar) |
+| **Categorias** | `GET /categories/public` — público (formulários e explorar) |
 | **Stream** | `GET /stream/:id` — áudio comprimido (token no header ou `?token=`) |
-| **Live** | `GET /live` — sessões WebSocket activas (memória) |
+| **Live** | `GET /live` — transmissões, gravações, VOD |
 | **Presença** | `POST /presence/heartbeat`, `/leave`, `GET /presence/online` |
 | **Admin** | `GET /admin/overview`, `/users`, `/podcasts`, `/streams`, `/logs`, `/categories` + CRUD |
 
-**WebSocket** (não REST): `ws://localhost:3001/live?token=…&role=broadcaster|listener&liveId=…`
+**WebSocket** (não REST): `wss://localhost:3001/live?token=…&role=broadcaster|listener&liveId=…`
 
 Detalhe completo: [DOCUMENTATION.md](./DOCUMENTATION.md).
 
@@ -179,14 +186,33 @@ npm run db:seed      # patches + admin
 
 Desenvolvimento por módulos: seguir `docs/DEVELOPMENT_FLOW.md` no teu ambiente local.
 
+## Testes automatizados (RF01–RF14)
+
+Com o servidor a correr (`cd server && npm run dev`):
+
+```bash
+cd server
+npm run test:rf01    # um requisito
+npm run test:all     # suite completa RF01–RF14
+```
+
+Na raiz do repositório: `npm run test:all` (atalho).
+
+O GitHub Actions (`.github/workflows/ci.yml`) executa `typecheck` + `test:all` em cada push/PR.
+
 ## Scripts úteis
 
 | Local | Comando | Descrição |
 |-------|---------|-----------|
+| raiz | `npm run test:all` | Suite RF01–RF14 (servidor tem de estar activo) |
+| raiz | `npm run dev:server` | Atalho para `server` dev |
 | server | `npm run dev` | API + WebSocket live |
 | server | `npm run typecheck` | TypeScript |
+| server | `npm run test:all` | Suite RF01–RF14 |
+| server | `npm run test:rf01` … `test:rf14` | Teste por requisito |
 | server | `npm run db:migrate` | Schema PostgreSQL |
 | server | `npm run db:seed` | Patches + admin |
+| server | `npm run certs:bootstrap` | Gerar certificados mTLS (dev) |
 | client | `npm run dev` | Vite (web) |
 | client | `npm run build` | Build produção |
 | client | `npm run electron:dev` | Desktop + Vite (`:5173` fixa) |

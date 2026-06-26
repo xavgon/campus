@@ -18,6 +18,13 @@ export interface AdminLogRow {
   created_at: string;
 }
 
+export interface UserActivityRow {
+  id: number;
+  action: string;
+  cert_cn: string | null;
+  created_at: string;
+}
+
 /**
  * Insere um registo de log com assinatura digital (Task 3 — Não Repúdio).
  *
@@ -89,4 +96,24 @@ export const listLogsForAdmin = async (limit = 100): Promise<AdminLogRow[]> => {
       created_at: createdAt,
     };
   });
+};
+
+/** RF02/RF13 — Últimas acções do utilizador autenticado. */
+export const listLogsForUser = async (userId: string, limit = 20): Promise<UserActivityRow[]> => {
+  const result = await getPool().query(
+    `SELECT id, action, cert_cn, created_at
+     FROM logs
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, limit],
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    cert_cn: row.cert_cn,
+    created_at:
+      row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+  }));
 };

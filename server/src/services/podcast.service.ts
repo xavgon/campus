@@ -8,6 +8,7 @@ import {
   registerPodcastCompressionJobs,
 } from '../compression/compressionJobs';
 import { compressAudio, compressImage, compressVideo } from '../compression/compress';
+import { getMediaDurationSeconds } from '../compression/ffprobe';
 import { extractAudioFromVideo } from '../compression/extractAudio';
 import {
   clearCompressionProgress,
@@ -21,18 +22,33 @@ import { AppError } from '../middleware/errorHandler';
 import {
   deletePodcastAndReturnPath,
   findPodcastById,
+  findPublicPodcastById,
   insertPodcast,
   listPodcasts,
+  listPublicPodcasts,
   updatePodcastById,
   type Podcast,
+  type PodcastListQuery,
+  type PaginatedPodcasts,
+  type PublicPodcast,
 } from '../models/podcast.model';
 import type { CreatePodcastInput, UpdatePodcastInput } from '../validations/podcast.validation';
+import { formatFromMediaPath, roundDurationSeconds } from '../utils/mediaFormat';
 import { notifyPodcastPublished } from './adminNotification.service';
 
-export const getPodcasts = async (opts?: {
-  search?: string;
-  category_id?: number;
-}): Promise<Podcast[]> => listPodcasts(opts);
+export const getPodcasts = async (
+  opts: PodcastListQuery = {},
+): Promise<PaginatedPodcasts<Podcast>> => listPodcasts(opts);
+
+export const getPublicPodcasts = async (
+  opts: PodcastListQuery = {},
+): Promise<PaginatedPodcasts<PublicPodcast>> => listPublicPodcasts(opts);
+
+export const getPublicPodcastById = async (id: string): Promise<PublicPodcast> => {
+  const podcast = await findPublicPodcastById(id);
+  if (!podcast) throw new AppError('Podcast não encontrado', 404);
+  return podcast;
+};
 
 export const getPodcastById = async (id: string): Promise<Podcast> => {
   const podcast = await findPodcastById(id);
@@ -87,6 +103,12 @@ export const createPodcast = async (
 
   const cover_url = files.cover ? `/uploads/covers/${files.cover.filename}` : null;
 
+  const probePath = audioPhysicalPath ?? videoPhysicalPath;
+  const durationRaw = probePath ? await getMediaDurationSeconds(probePath) : null;
+  const duration_seconds = roundDurationSeconds(durationRaw);
+  const primaryName = files.audio?.filename ?? files.video?.filename ?? '';
+  const media_format = primaryName ? formatFromMediaPath(primaryName) : null;
+
   const podcast = await insertPodcast({
     title: input.title,
     description: input.description,
@@ -95,6 +117,8 @@ export const createPodcast = async (
     video_url,
     cover_url,
     original_size,
+    duration_seconds,
+    media_format,
     user_id: userId,
     author_cert_fingerprint: authorCert?.fingerprint ?? null,
     author_cert_cn: authorCert?.cn ?? null,
@@ -203,6 +227,14 @@ const AUDIO_MIME: Record<string, string> = {
   '.webm': 'audio/webm',
 };
 
+const VIDEO_MIME: Record<string, string> = {
+  '.webm': 'video/webm',
+  '.mp4': 'video/mp4',
+  '.ogg': 'video/ogg',
+};
+
+export type PodcastDownloadMedia = 'audio' | 'video';
+
 const resolveUploadPath = (urlPath: string): string =>
   path.join(process.cwd(), urlPath.replace(/^\/+/, ''));
 
@@ -220,36 +252,53 @@ export interface PodcastDownloadInfo {
   filePath: string;
   downloadName: string;
   contentType: string;
+  title: string;
 }
 
-export const getPodcastDownload = async (id: string): Promise<PodcastDownloadInfo> => {
+export const getPodcastDownload = async (
+  id: string,
+  media: PodcastDownloadMedia = 'audio',
+): Promise<PodcastDownloadInfo> => {
   const podcast = await getPodcastById(id);
-  if (!podcast.audio_url) {
-    throw new AppError('Este podcast ainda não tem ficheiro de áudio', 404);
+
+  if (podcast.compressed_size == null) {
+    throw new AppError('Este episódio ainda está a ser processado. Tenta mais tarde.', 409);
   }
 
-  const filePath = resolveUploadPath(podcast.audio_url);
+  const urlPath = media === 'video' ? podcast.video_url : podcast.audio_url;
+  if (!urlPath) {
+    throw new AppError(
+      media === 'video'
+        ? 'Este episódio não tem ficheiro de vídeo para download'
+        : 'Este podcast ainda não tem ficheiro de áudio',
+      404,
+    );
+  }
+
+  const filePath = resolveUploadPath(urlPath);
   if (!fs.existsSync(filePath)) {
-    throw new AppError('Ficheiro de áudio não encontrado no servidor', 404);
+    throw new AppError('Ficheiro do episódio não encontrado no servidor', 404);
   }
 
-  const ext = path.extname(filePath).toLowerCase() || '.mp3';
+  const ext = path.extname(filePath).toLowerCase() || (media === 'video' ? '.mp4' : '.mp3');
+  const mimeMap = media === 'video' ? VIDEO_MIME : AUDIO_MIME;
+
   return {
     filePath,
     downloadName: sanitizeDownloadName(podcast.title, ext),
-    contentType: AUDIO_MIME[ext] ?? 'application/octet-stream',
+    contentType: mimeMap[ext] ?? 'application/octet-stream',
+    title: podcast.title,
   };
 };
 
 export const updatePodcast = async (
   id: string,
   userId: string,
-  isAdmin: boolean,
   input: UpdatePodcastInput,
 ): Promise<Podcast> => {
   const existing = await findPodcastById(id);
   if (!existing) throw new AppError('Podcast não encontrado', 404);
-  if (!isAdmin && existing.user_id !== userId) {
+  if (existing.user_id !== userId) {
     throw new AppError('Sem permissão para editar este podcast', 403);
   }
 
@@ -261,12 +310,8 @@ export const updatePodcast = async (
   return podcast;
 };
 
-export const deletePodcast = async (
-  id: string,
-  userId: string,
-  isAdmin: boolean,
-): Promise<void> => {
-  const result = await deletePodcastAndReturnPath(id, userId, isAdmin);
+export const deletePodcast = async (id: string, userId: string): Promise<void> => {
+  const result = await deletePodcastAndReturnPath(id, userId);
 
   if (!result) {
     throw new AppError('Podcast não encontrado ou sem permissão para eliminar', 404);

@@ -30,10 +30,10 @@ Browser / Electron
 |--------------|-----------|
 | `user` | Utilizador normal (defeito) — ouvir, explorar, assistir live |
 | `creator` | Pode publicar podcasts (`POST /api/podcasts`) e transmitir (`/live/broadcast`) |
-| `admin` | Acesso a `/api/admin/*`, rotas `/admin` no cliente; também pode publicar e transmitir |
+| `admin` | Acesso a `/api/admin/*` e rotas `/admin` no cliente; **não** publica podcasts nem transmite live |
 
 O middleware `requireAdmin` valida o papel na base de dados (não só no JWT).  
-O middleware `requireCreator` exige `creator` ou `admin` para publicação e broadcast.
+O middleware `requireCreator` exige papel `creator` para publicação e broadcast (Task 9).
 
 ---
 
@@ -47,6 +47,23 @@ Configuração em `server/src/config/cors.ts`:
 
 ---
 
+## API — Índice REST (RF14)
+
+| Método | Rota | Auth | Descrição |
+|--------|------|------|-----------|
+| GET | `/` | mTLS | Metadados da API, envelope JSON, grupos de recursos e WebSocket |
+
+Resposta inclui `version`, `baseUrl`, `envelope`, `authentication` e `resources[]` com métodos HTTP documentados.
+
+Envelope padrão em todas as rotas JSON:
+
+```json
+{ "success": true, "message": "…", "data": { } }
+{ "success": false, "message": "…", "data": null }
+```
+
+---
+
 ## API — Autenticação
 
 | Método | Rota | Auth | Descrição |
@@ -54,6 +71,7 @@ Configuração em `server/src/config/cors.ts`:
 | POST | `/auth/register` | — | Criar conta |
 | POST | `/auth/login` | — | Login → `{ token, user }` |
 | GET | `/auth/profile` | Bearer | Perfil do utilizador autenticado |
+| GET | `/auth/activity` | Bearer | Últimas acções do utilizador (RF02/RF13) |
 | PUT | `/auth/profile` | Bearer | Actualizar nome |
 | PUT | `/auth/profile/photo` | Bearer | Upload foto (`multipart`, campo `photo`, máx. 5 MB) |
 | DELETE | `/auth/profile/photo` | Bearer | Remover foto de perfil |
@@ -73,8 +91,9 @@ O link de reset aponta para `{CLIENT_URL}/reset-password?token=…`.
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| GET | `/podcasts/public` | — | Catálogo público — episódios com compressão concluída; query `search`, `category_id` |
-| GET | `/podcasts` | Bearer | Listagem completa (área autenticada) — query `search`, `category_id` |
+| GET | `/podcasts/public` | — | Catálogo público — episódios com compressão concluída; query `search`, `category_id`, `page`, `limit`, `sort` |
+| GET | `/podcasts/public/:id` | — | Detalhe público de episódio (RF10) |
+| GET | `/podcasts` | Bearer | Listagem completa (área autenticada) — query `search`, `category_id`, `page`, `limit`, `sort` |
 | GET | `/podcasts/:id` | Bearer | Detalhe de um episódio |
 | POST | `/podcasts` | Bearer + criador | Upload multipart (áudio, vídeo e capa opcionais) |
 | PATCH | `/podcasts/:id` | Bearer | Editar metadados (dono ou admin) |
@@ -84,11 +103,12 @@ O link de reset aponta para `{CLIENT_URL}/reset-password?token=…`.
 
 Ficheiros servidos em `/uploads/…` (estático no Express).
 
-### Categorias (público)
+### Categorias
 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
-| GET | `/categories` | — | Lista categorias para explorar e formulários |
+| GET | `/categories/public` | — | Lista categorias (explorar e formulários) |
+| GET | `/categories` | Bearer | Lista categorias (autenticado) |
 
 ---
 
@@ -97,6 +117,7 @@ Ficheiros servidos em `/uploads/…` (estático no Express).
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
 | GET | `/stream/:id` | Bearer ou `?token=` | Stream do áudio comprimido (suporta `<audio src>`) |
+| GET | `/stream/:id/video` | Bearer ou `?token=` | Stream do vídeo comprimido |
 
 Middleware `requireStreamAuth` — token no header `Authorization` ou query string.
 
@@ -111,6 +132,9 @@ Sessões **em memória** no processo Node — independentes da tabela `streams` 
 | Método | Rota | Auth | Descrição |
 |--------|------|------|-----------|
 | GET | `/live` | Bearer | `{ sessions[], total }` — transmissões activas |
+| GET | `/live/scheduled` | Bearer + criador | Agenda do anfitrião |
+| GET | `/live/recordings` | Bearer + criador | Gravações do servidor FFmpeg |
+| POST | `/live/recordings/:id/publish` | Bearer + criador | Publicar gravação como episódio VOD (RF07) |
 
 ### WebSocket
 
@@ -299,23 +323,53 @@ A URL WebSocket é derivada de `VITE_API_URL` (`http` → `ws`, sem `/api`).
 
 ---
 
-## Pendências alinhadas aos módulos
+## Testes automatizados (RF01–RF14)
 
-| Módulo | Backend | Frontend |
-|--------|---------|----------|
-| 3 Compressão | FFmpeg, progresso, `processing_time_ms` | Badges e painel no detalhe |
-| 4 Streaming | Vídeo + áudio (`/stream/:id/video`) | Players custom na biblioteca |
-| 6 Perfil | `PUT` perfil/password | Gravar forms do perfil |
-| Reset email | SMTP (`server/src/mail/`) | ✅ rota `/reset-password` |
-| Explorar | `GET /podcasts/public` | ✅ `/explorar` com catálogo real |
-| Live Passo 2 | Unificar com `streams` na BD | Mensagens de erro mais claras |
-| Electron | Ícone ICO + empacotamento | Smoke test de build |
+Scripts em `server/scripts/test-rf*.mjs`. Requerem servidor activo em `https://localhost:3001` com certificados mTLS em `server/certs/`.
+
+```bash
+cd server
+npm run dev          # terminal 1
+npm run test:rf09    # um requisito
+npm run test:all     # suite RF01–RF14
+```
+
+| Script | Requisito |
+|--------|-----------|
+| `test:rf01` | Autenticação e contas |
+| `test:rf02` | Gestão de perfis |
+| `test:rf03` | Upload de podcasts |
+| `test:rf04` | Armazenamento multimédia |
+| `test:rf05` | Compressão automática |
+| `test:rf06` | Streaming de reprodução |
+| `test:rf07` | VOD (gravações live) |
+| `test:rf08` | Controlos do player (contrato API) |
+| `test:rf09` | Pesquisa de podcasts |
+| `test:rf10` | Consulta de conteúdos |
+| `test:rf11` | Download de episódios |
+| `test:rf12` | Gestão de permissões |
+| `test:rf13` | Registo de atividades |
+| `test:rf14` | API RESTful |
+
+CI: `.github/workflows/ci.yml` — PostgreSQL, FFmpeg, `certs:bootstrap`, `typecheck`, `test:all`.
+
+---
+
+## Pendências e melhorias futuras
+
+| Área | Notas |
+|------|-------|
+| Live vs admin `streams` | Unificar metadados BD com gateway WebSocket |
+| Electron | Smoke test de build em CI (opcional) |
+| Mobile | RNF05 — cliente web responsivo; apps nativas fora de âmbito |
 
 ---
 
 ## Changelog recente (resumo)
 
-- Catálogo público — `GET /api/podcasts/public` + página `/explorar`.
+- **RF01–RF14** — suite de testes automatizados + CI GitHub Actions.
+- **RF14** — `GET /api` índice REST + `fetchApiIndex()` no cliente.
+- **RF13** — logs em todas as acções principais + `test:rf13`.
 - Compressão FFmpeg — progresso real, badges, AAC/OGG, `processing_time_ms`.
 - Ícone Electron 256×256 — `build-resources/icon.png` + `icon.ico`, script `npm run electron:icon`.
 - SMTP — emails de reset password com template CAMPUS.

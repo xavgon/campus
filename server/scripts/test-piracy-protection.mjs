@@ -1,10 +1,5 @@
 /**
  * Script de teste — Task 5 (Protecção contra Pirataria)
- * Verifica que:
- *   1. Downloads ficam registados com o fingerprint do certificado de cliente
- *   2. O admin consegue ver o histórico e detectar padrões suspeitos
- *   3. Cert revogado não consegue fazer download
- *
  * Executa: node server/scripts/test-piracy-protection.mjs
  */
 import https from 'https';
@@ -15,88 +10,144 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const certsDir = path.resolve(__dirname, '../certs');
 
-const CA       = fs.readFileSync(path.join(certsDir, 'ca.crt'));
+const CA = fs.readFileSync(path.join(certsDir, 'ca.crt'));
 const CLI_CERT = fs.readFileSync(path.join(certsDir, 'client.crt'));
-const CLI_KEY  = fs.readFileSync(path.join(certsDir, 'client.key'));
-
-const req = (method, reqPath, body, extraHeaders = {}, tlsOpts = {}) =>
-  new Promise((resolve, reject) => {
-    const data = body ? JSON.stringify(body) : null;
-    const r = https.request({
-      hostname: 'localhost', port: 3001, path: reqPath, method,
-      rejectUnauthorized: false, cert: CLI_CERT, key: CLI_KEY, ca: CA,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
-        ...extraHeaders,
-      },
-      ...tlsOpts,
-    }, (res) => {
-      let raw = ''; res.on('data', (d) => (raw += d));
-      res.on('end', () => {
-        try { resolve({ status: res.statusCode, body: JSON.parse(raw) }); }
-        catch { resolve({ status: res.statusCode, body: raw }); }
-      });
-    });
-    r.on('error', reject);
-    if (data) r.write(data);
-    r.end();
-  });
+const CLI_KEY = fs.readFileSync(path.join(certsDir, 'client.key'));
 
 const check = (label, ok, detail = '') => {
   console.log(`${ok ? '✅' : '❌'} ${label}`);
   if (detail) console.log(`   → ${detail}`);
 };
 
+const request = (method, reqPath, body = null, extraHeaders = {}) =>
+  new Promise((resolve, reject) => {
+    const data = body ? JSON.stringify(body) : null;
+    const r = https.request(
+      {
+        hostname: 'localhost',
+        port: 3001,
+        path: reqPath,
+        method,
+        rejectUnauthorized: false,
+        cert: CLI_CERT,
+        key: CLI_KEY,
+        ca: CA,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(data ? { 'Content-Length': Buffer.byteLength(data) } : {}),
+          ...extraHeaders,
+        },
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (chunk) => {
+          raw += chunk;
+        });
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode ?? 0, body: JSON.parse(raw) });
+          } catch {
+            resolve({ status: res.statusCode ?? 0, body: raw });
+          }
+        });
+      },
+    );
+    r.on('error', reject);
+    if (data) r.write(data);
+    r.end();
+  });
+
+const downloadPodcast = (podcastId, token) =>
+  new Promise((resolve, reject) => {
+    const r = https.request(
+      {
+        hostname: 'localhost',
+        port: 3001,
+        path: `/api/podcasts/${podcastId}/download`,
+        method: 'GET',
+        rejectUnauthorized: false,
+        cert: CLI_CERT,
+        key: CLI_KEY,
+        ca: CA,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      (res) => {
+        res.on('data', () => {});
+        res.on('end', () => resolve(res.statusCode ?? 0));
+      },
+    );
+    r.on('error', reject);
+    r.end();
+  });
+
 console.log('\n══════════════════════════════════════════════');
 console.log(' CAMPUS — Teste Protecção contra Pirataria (Task 5)');
 console.log('══════════════════════════════════════════════\n');
 
-// 1. Login
 console.log('Passo 1: autenticar como admin…');
-const loginRes = await req('POST', '/api/auth/login', { email: 'admin@campus.co.ao', password: 'Campus123' });
+const loginRes = await request('POST', '/api/auth/login', {
+  email: 'admin@campus.co.ao',
+  password: 'Campus123',
+});
 check('Login bem-sucedido', loginRes.status === 200);
 const token = loginRes.body?.data?.token;
 check('Token obtido', !!token);
-
 const auth = { Authorization: `Bearer ${token}` };
 
-// 2. Verificar histórico de downloads (pode estar vazio se não há podcasts com ficheiros)
-console.log('\nPasso 2: consultar histórico de downloads…');
-const dlRes = await req('GET', '/api/admin/downloads', null, auth);
-check('Endpoint acessível (HTTP 200)', dlRes.status === 200, `HTTP ${dlRes.status}`);
-const downloads = dlRes.body?.data?.downloads ?? [];
-check('Estrutura de resposta correcta', Array.isArray(downloads), `${downloads.length} registos`);
+console.log('\nPasso 2: histórico de downloads (antes)…');
+const dlBefore = await request('GET', '/api/admin/downloads', null, auth);
+const countBefore = dlBefore.body?.data?.downloads?.length ?? 0;
+check('GET /admin/downloads', dlBefore.status === 200, `${countBefore} registo(s)`);
 
-// 3. Consultar análise de pirataria
-console.log('\nPasso 3: consultar análise de pirataria…');
-const piracyRes = await req('GET', '/api/admin/piracy-alerts', null, auth);
-check('Endpoint acessível (HTTP 200)', piracyRes.status === 200, `HTTP ${piracyRes.status}`);
+console.log('\nPasso 3: executar download rastreado…');
+const podcastsRes = await request('GET', '/api/podcasts', null, auth);
+const podcasts = podcastsRes.body?.data?.podcasts ?? [];
+const withAudio = podcasts.find((p) => p.audio_url);
+let downloadOk = false;
+
+if (withAudio) {
+  const code1 = await downloadPodcast(withAudio.id, token);
+  const code2 = await downloadPodcast(withAudio.id, token);
+  downloadOk = code1 === 200 && code2 === 200;
+  check('Dois downloads do episódio', downloadOk, `"${withAudio.title}" — HTTP ${code1}, ${code2}`);
+} else {
+  console.log('ℹ️  Nenhum episódio com áudio — passo 3 ignorado (publica um podcast com ficheiro).');
+}
+
+console.log('\nPasso 4: confirmar registo com fingerprint…');
+const dlAfter = await request('GET', '/api/admin/downloads', null, auth);
+const downloads = dlAfter.body?.data?.downloads ?? [];
+check('Downloads após teste', dlAfter.status === 200, `${downloads.length} registo(s)`);
+
+if (withAudio && downloadOk) {
+  const tracked = downloads.filter((d) => d.podcast_id === withAudio.id);
+  check('Downloads do episódio registados', tracked.length >= 2, `${tracked.length} entrada(s)`);
+  const withCert = tracked.filter((d) => d.cert_fingerprint);
+  check('Fingerprint do dispositivo guardado', withCert.length > 0, withCert[0]?.cert_cn ?? 'null');
+  check('CN do certificado guardado', withCert.some((d) => d.cert_cn), withCert[0]?.cert_cn ?? 'null');
+}
+
+console.log('\nPasso 5: análise de pirataria…');
+const piracyRes = await request('GET', '/api/admin/piracy-alerts', null, auth);
 const alerts = piracyRes.body?.data?.alerts ?? [];
-check('Estrutura de resposta correcta', Array.isArray(alerts), `${alerts.length} alertas`);
+check('GET /admin/piracy-alerts', piracyRes.status === 200, `${alerts.length} alerta(s)`);
 
-if (alerts.length > 0) {
-  const a = alerts[0];
-  console.log(`   Podcast: "${a.podcast_title}" — ${a.total_downloads} downloads, ${a.unique_certs} certs distintos`);
-  check('Alerta tem contagem de certs únicos', typeof a.unique_certs === 'number');
+if (withAudio && downloadOk) {
+  const alert = alerts.find((a) => a.podcast_id === withAudio.id);
+  check('Alerta gerado para episódio com 2+ downloads', !!alert, alert?.podcast_title ?? 'n/a');
+  if (alert) {
+    check('Métricas do alerta', alert.total_downloads >= 2, `total: ${alert.total_downloads}, certs: ${alert.unique_certs}`);
+  }
 }
 
-// 4. Verificar que cert revogado seria bloqueado (demonstração conceptual)
-console.log('\nPasso 4: verificar lista de certs emitidos pela CA…');
-const certsRes = await req('GET', '/api/admin/certs', null, auth);
-check('Certs acessíveis (HTTP 200)', certsRes.status === 200);
-const certs = certsRes.body?.data?.certs ?? [];
-check('Registo de certs da CA', certs.length > 0, `${certs.length} cert(s) registado(s)`);
-if (certs[0]) {
-  check('Cert tem fingerprint', !!certs[0].fingerprint, certs[0].cn);
-  check('Cert tem estado de revogação', typeof certs[0].revoked === 'boolean',
-    certs[0].revoked ? 'REVOGADO' : 'Activo');
-}
+console.log('\nPasso 6: ligação com revogação de cert (Task 4)…');
+const certsRes = await request('GET', '/api/admin/certs', null, auth);
+const activeCerts = (certsRes.body?.data?.certs ?? []).filter((c) => !c.revoked);
+check('Certs activos na CA', activeCerts.length > 0, `${activeCerts.length} cert(s)`);
 
 console.log('\n══════════════════════════════════════════════');
-console.log('Resumo do mecanismo de protecção contra pirataria:');
-console.log('  • Cada download regista: podcast, utilizador, cert fingerprint, IP');
-console.log('  • Admin vê histórico em /api/admin/downloads');
-console.log('  • /api/admin/piracy-alerts detecta downloads suspeitos');
-console.log('  • Revogar cert em /api/admin/certs/:id/revoke bloqueia acesso imediato');
+console.log(' Mecanismo anti-pirataria (Task 5):');
+console.log('   • Download → podcast_downloads + log assinado');
+console.log('   • Admin UI: /admin/piracy');
+console.log('   • Revogar cert bloqueia novos acessos (Task 4)');
 console.log('══════════════════════════════════════════════\n');

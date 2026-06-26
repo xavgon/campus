@@ -55,9 +55,9 @@ A URL WebSocket live é derivada automaticamente (`http` → `ws`, sem sufixo `/
 | `/dashboard` | Dashboard | Stats, ligados agora, atalhos |
 | `/podcasts` | Biblioteca | API, pesquisa com debounce 300 ms |
 | `/podcasts/:id` | Detalhe | Player e download |
-| `/podcasts/new` | Publicar | Só criador/admin (`CreatorRoute`) |
+| `/podcasts/new` | Publicar | Só criador (`CreatorRoute`) |
 | `/live` | Ao vivo | Lista transmissões activas |
-| `/live/broadcast` | Transmitir | Só criador/admin |
+| `/live/broadcast` | Transmitir | Só criador |
 | `/live/:id` | Assistir | WebSocket listener |
 | `/profile` | Perfil | Nome, password |
 

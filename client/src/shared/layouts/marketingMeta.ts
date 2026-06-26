@@ -1,4 +1,4 @@
-export type MarketingRoute = '/' | '/explorar' | '/login' | '/register' | '/reset-password';
+export type MarketingRoute = '/' | '/explorar' | '/ajuda' | '/login' | '/register' | '/reset-password';
 
 export interface MarketingMeta {
   eyebrow: string;
@@ -24,6 +24,11 @@ export const MARKETING_BACKGROUNDS: Record<MarketingRoute, MarketingBackground> 
     src: '/images/bg-home.jpg',
     position: 'center',
     overlayClass: 'from-black/88 via-campus-surface-dark/82 to-black/92',
+  },
+  '/ajuda': {
+    src: '/images/bg-home.jpg',
+    position: 'center',
+    overlayClass: 'from-black/90 via-campus-surface-dark/85 to-black/92',
   },
   '/login': {
     src: '/images/bg-login.png',
@@ -60,7 +65,13 @@ export const MARKETING_META: Record<MarketingRoute, MarketingMeta> = {
     eyebrow: 'Catálogo',
     title: 'Explora podcasts educativos.',
     description:
-      'Ouve e descobre episódios de diferentes áreas. O catálogo público expande-se com o Módulo 2.',
+      'Pesquisa por título, autor, categoria ou tema. Entra na tua conta para ouvir episódios completos.',
+  },
+  '/ajuda': {
+    eyebrow: 'Documentação',
+    title: 'Manual de utilizador do CAMPUS.',
+    description:
+      'Guia por papel — visitante, utilizador, criador e administrador. Segurança, publicação e moderação.',
   },
   '/login': {
     eyebrow: 'Entrar',
@@ -82,6 +93,7 @@ export const MARKETING_META: Record<MarketingRoute, MarketingMeta> = {
 export const isMarketingRoute = (path: string): path is MarketingRoute =>
   path === '/' ||
   path === '/explorar' ||
+  path === '/ajuda' ||
   path === '/login' ||
   path === '/register' ||
   path === '/reset-password';

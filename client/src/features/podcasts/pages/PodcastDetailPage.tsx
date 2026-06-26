@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { AudioPlayer } from '@/features/podcasts/components/AudioPlayer';
 import { VideoPlayer } from '@/features/podcasts/components/VideoPlayer';
 import { PodcastCover } from '@/features/podcasts/components/PodcastCover';
+import { AuthorCertBadge } from '@/features/podcasts/components/AuthorCertBadge';
 import { CompressionBadge } from '@/features/podcasts/components/CompressionBadge';
 import { CompressionDetailPanel } from '@/features/podcasts/components/CompressionDetailPanel';
 import { PodcastEditModal } from '@/features/podcasts/components/PodcastEditModal';
@@ -11,35 +12,39 @@ import { PodcastStatusBadge } from '@/features/podcasts/components/PodcastStatus
 import {
   canPlayPodcast,
   deletePodcast,
-  downloadPodcast,
   fetchCompressionProgress,
   fetchPodcastById,
   getPodcastStreamUrl,
   getPodcastVideoStreamUrl,
   hasPodcastVideo,
 } from '@/features/podcasts/services/podcast.service';
+import { PodcastDownloadPanel } from '@/features/podcasts/components/PodcastDownloadPanel';
 import type { CompressionProgress } from '@/features/podcasts/types/compression';
 import type { Podcast } from '@/features/podcasts/types/podcast';
 import { canManagePodcast } from '@/features/podcasts/utils/canManagePodcast';
 import { formatPodcastDate } from '@/features/podcasts/utils/formatPodcastDate';
+import { formatDuration } from '@/features/podcasts/utils/formatDuration';
+import { formatFileSize } from '@/features/podcasts/utils/formatFileSize';
+import { formatMediaFormatLabel } from '@/features/podcasts/utils/formatMediaFormat';
+import { getCompressionProfileLabel } from '@/features/podcasts/utils/formatCompressionProfile';
 import { getCompressionState } from '@/features/podcasts/utils/compressionState';
 import { ProfileNotice } from '@/features/profile/components/ProfileNotice';
 import { Alert } from '@/shared/components/campus/Alert';
 import { Modal } from '@/shared/components/campus/Modal';
 import { PageHeader } from '@/shared/components/campus/PageHeader';
-import { ERROR_TITLES, EMPTY_STATE_COPY } from '@/shared/copy/campusMessages';
+import { ERROR_TITLES, EMPTY_STATE_COPY, VOD_COPY } from '@/shared/copy/campusMessages';
 import { getApiErrorMessage } from '@/shared/api/client';
 import { Button } from '@/shared/components/ui/Button';
 
 export const PodcastDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
+  const publishNotice = (location.state as { notice?: string } | null)?.notice;
   const { user } = useAuth();
   const [podcast, setPodcast] = useState<Podcast | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -160,18 +165,6 @@ export const PodcastDetailPage = () => {
   const canManage = canManagePodcast(user, podcast);
   const compressionState = getCompressionState(podcast, compressionProgress);
 
-  const onDownload = async () => {
-    setDownloadError(null);
-    setIsDownloading(true);
-    try {
-      await downloadPodcast(podcast);
-    } catch (err) {
-      setDownloadError(getApiErrorMessage(err));
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   const onConfirmDelete = async () => {
     setDeleteError(null);
     setIsDeleting(true);
@@ -187,6 +180,16 @@ export const PodcastDetailPage = () => {
 
   return (
     <div className="campus-page-enter space-y-8">
+      {publishNotice && (
+        <ProfileNotice title="Episódio publicado" message={publishNotice} variant="success" />
+      )}
+      {playable && !publishNotice && (
+        <ProfileNotice
+          title={VOD_COPY.onDemandTitle}
+          message={VOD_COPY.onDemandMessage}
+          variant="info"
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Link to="/podcasts" className="text-sm font-bold text-campus-primary hover:underline">
           ← Biblioteca
@@ -224,9 +227,38 @@ export const PodcastDetailPage = () => {
             <p>
               <span className="text-campus-muted">Autor:</span> {podcast.authorName}
             </p>
+            <AuthorCertBadge
+              cn={podcast.authorCertCn}
+              fingerprint={podcast.authorCertFingerprint}
+            />
             <p>
               <span className="text-campus-muted">Categoria:</span> {podcast.categoryName}
             </p>
+            {podcast.durationSeconds > 0 && (
+              <p>
+                <span className="text-campus-muted">Duração:</span>{' '}
+                {formatDuration(podcast.durationSeconds)}
+              </p>
+            )}
+            {podcast.originalSize != null && (
+              <p>
+                <span className="text-campus-muted">Tamanho:</span>{' '}
+                {formatFileSize(podcast.originalSize)}
+                {podcast.compressedSize != null && (
+                  <span className="text-campus-muted">
+                    {' '}
+                    → {formatFileSize(podcast.compressedSize)} comprimido
+                  </span>
+                )}
+              </p>
+            )}
+            {podcast.mediaFormat && (
+              <p>
+                <span className="text-campus-muted">Formato comprimido:</span>{' '}
+                {getCompressionProfileLabel(podcast.mediaFormat, withVideo ? 'video' : 'audio') ??
+                  formatMediaFormatLabel(podcast.mediaFormat)}
+              </p>
+            )}
             <p>
               <span className="text-campus-muted">Publicado:</span> {formatPodcastDate(podcast.createdAt)}
             </p>
@@ -253,34 +285,20 @@ export const PodcastDetailPage = () => {
           {playable ? (
             <div className="space-y-4">
               {withVideo && videoStreamUrl ? (
-                <VideoPlayer src={videoStreamUrl} title={podcast.title} poster={podcast.coverUrl} />
+                <VideoPlayer
+                  src={videoStreamUrl}
+                  title={podcast.title}
+                  poster={podcast.coverUrl}
+                  knownDurationSeconds={podcast.durationSeconds}
+                />
               ) : streamUrl ? (
-                <AudioPlayer src={streamUrl} title={podcast.title} />
+                <AudioPlayer
+                  src={streamUrl}
+                  title={podcast.title}
+                  knownDurationSeconds={podcast.durationSeconds}
+                />
               ) : null}
-              <div className="flex flex-wrap items-center gap-3">
-                {!withVideo && (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void onDownload()}
-                      disabled={isDownloading}
-                    >
-                      {isDownloading ? 'A descarregar…' : 'Descarregar episódio'}
-                    </Button>
-                    <p className="text-xs text-campus-muted">
-                      Guarda o áudio no dispositivo para ouvir offline.
-                    </p>
-                  </>
-                )}
-                {withVideo && (
-                  <p className="text-xs text-campus-muted">
-                    Episódio com vídeo e áudio integrado. O áudio comprimido fica disponível para
-                    podcasts só de áudio após o processamento.
-                  </p>
-                )}
-              </div>
-              {downloadError && <Alert title={ERROR_TITLES.download} message={downloadError} />}
+              <PodcastDownloadPanel podcast={podcast} withVideo={withVideo} />
             </div>
           ) : (
             <ProfileNotice

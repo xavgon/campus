@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { AdminDataTable } from '@/features/admin/components/AdminDataTable';
 import { AdminFeedback } from '@/features/admin/components/AdminFeedback';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { RoleBadge } from '@/features/admin/components/RoleBadge';
 import { adminSelectClass } from '@/features/admin/components/adminFormStyles';
 import {
   deleteAdminUser,
@@ -100,8 +101,8 @@ export const AdminUsersPage = () => {
     <section className="campus-panel p-5 sm:p-7">
       <AdminPageHeader
         eyebrow="Utilizadores"
-        title="Gestão de contas"
-        description="Edita nome e papel, altera rapidamente na tabela ou elimina contas (excepto o admin principal)."
+        title="Gestão de contas e papéis"
+        description="Task 9 — admin gere contas; criador publica conteúdo; utilizador consome. Promove contas a criador aqui."
       />
 
       <AdminFeedback notice={notice} error={error} />
@@ -134,16 +135,19 @@ export const AdminUsersPage = () => {
             key: 'role',
             header: 'Papel',
             render: (row) => (
-              <select
-                className={adminSelectClass}
-                value={row.role}
-                disabled={busyId === row.id}
-                onChange={(e) => void onRoleChange(row, e.target.value as UserRole)}
-              >
-                <option value="user">Utilizador</option>
-                <option value="creator">Criador</option>
-                <option value="admin">Administrador</option>
-              </select>
+              <div className="space-y-2">
+                <RoleBadge role={row.role} />
+                <select
+                  className={adminSelectClass}
+                  value={row.role}
+                  disabled={busyId === row.id}
+                  onChange={(e) => void onRoleChange(row, e.target.value as UserRole)}
+                >
+                  <option value="user">Utilizador</option>
+                  <option value="creator">Criador</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
             ),
           },
           {

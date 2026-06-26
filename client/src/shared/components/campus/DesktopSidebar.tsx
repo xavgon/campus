@@ -3,6 +3,7 @@ import { ADMIN_NAV_ITEMS } from '@/features/admin/constants';
 import type { User } from '@/features/auth/types/auth.types';
 import { isAdminUser } from '@/features/auth/utils/isAdmin';
 import { ProfileAvatar } from '@/features/profile/components/ProfileAvatar';
+import { NavManualLink } from '@/shared/components/campus/NavManualLink';
 import { NavUserName } from '@/shared/components/campus/NavUserName';
 import { getAppNavItems, type NavItem } from '@/shared/navigation/navConfig';
 import { BRAND } from '@/shared/styles/brand';
@@ -120,6 +121,8 @@ export const DesktopSidebar = ({ user, onLogout }: DesktopSidebarProps) => {
             </span>
           </span>
         </NavLink>
+
+        <NavManualLink className="w-full justify-center" alwaysShowLabel />
 
         <button type="button" onClick={onLogout} className="campus-desktop-sidebar__logout">
           Sair

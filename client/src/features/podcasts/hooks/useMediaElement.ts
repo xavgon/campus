@@ -4,6 +4,7 @@ import { MEDIA_COPY } from '@/shared/copy/campusMessages';
 export const useMediaElement = (
   mediaRef: RefObject<HTMLMediaElement | null>,
   src: string,
+  fallbackDurationSeconds?: number,
 ) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -17,7 +18,13 @@ export const useMediaElement = (
     if (!media) return;
 
     const onLoadedMetadata = () => {
-      setDuration(media.duration);
+      const fromMedia =
+        Number.isFinite(media.duration) && media.duration > 0 ? media.duration : 0;
+      const fromApi =
+        fallbackDurationSeconds != null && fallbackDurationSeconds > 0
+          ? fallbackDurationSeconds
+          : 0;
+      setDuration(fromMedia || fromApi);
       setIsLoading(false);
       setError(null);
     };
@@ -55,7 +62,13 @@ export const useMediaElement = (
       media.removeEventListener('canplay', onCanPlay);
       media.removeEventListener('error', onError);
     };
-  }, [mediaRef, src]);
+  }, [mediaRef, src, fallbackDurationSeconds]);
+
+  useEffect(() => {
+    if (fallbackDurationSeconds != null && fallbackDurationSeconds > 0) {
+      setDuration((prev) => (prev > 0 ? prev : fallbackDurationSeconds));
+    }
+  }, [fallbackDurationSeconds]);
 
   useEffect(() => {
     const media = mediaRef.current;

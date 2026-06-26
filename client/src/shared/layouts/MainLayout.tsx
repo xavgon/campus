@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { usePresenceSession } from '@/features/presence/hooks/usePresenceSession';
 import { CampusNav } from '@/shared/components/campus/CampusNav';
@@ -26,7 +26,10 @@ export const MainLayout = () => {
             </RouteTransition>
           </main>
           <footer className="shrink-0 border-t border-campus-border bg-campus-surface-elevated px-4 py-2 text-center text-xs text-campus-muted">
-            {BRAND.name} · {BRAND.year}
+            {BRAND.name} · {BRAND.year} ·{' '}
+            <Link to="/ajuda" className="text-campus-primary hover:underline">
+              Ajuda
+            </Link>
           </footer>
         </div>
       </div>
@@ -47,7 +50,10 @@ export const MainLayout = () => {
         </RouteTransition>
       </main>
       <footer className="relative z-10 border-t border-campus-border py-6 text-center text-sm text-campus-muted">
-        © {new Date().getFullYear()} {BRAND.name} — {BRAND.year}
+        © {new Date().getFullYear()} {BRAND.name} — {BRAND.year} ·{' '}
+        <Link to="/ajuda" className="text-campus-primary hover:underline">
+          Manual de utilizador
+        </Link>
       </footer>
     </div>
   );

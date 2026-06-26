@@ -3,4 +3,7 @@ export { AdminUsersPage } from '@/features/admin/pages/AdminUsersPage';
 export { AdminPostsPage } from '@/features/admin/pages/AdminPostsPage';
 export { AdminTransmissionsPage } from '@/features/admin/pages/AdminTransmissionsPage';
 export { AdminLogsPage } from '@/features/admin/pages/AdminLogsPage';
+export { AdminCertsPage } from '@/features/admin/pages/AdminCertsPage';
+export { AdminAllowlistPage } from '@/features/admin/pages/AdminAllowlistPage';
+export { AdminPiracyPage } from '@/features/admin/pages/AdminPiracyPage';
 export { AdminNotificationsPage } from '@/features/admin/pages/AdminNotificationsPage';

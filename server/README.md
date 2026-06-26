@@ -31,6 +31,9 @@ Em **desenvolvimento**, o CORS aceita qualquer porta `localhost` / `127.0.0.1` (
 | `npm run typecheck` | Verificar TypeScript |
 | `npm run db:migrate` | Aplicar `schema.sql` |
 | `npm run db:seed` | Patches + conta admin |
+| `npm run certs:bootstrap` | Gerar certificados mTLS (OpenSSL) |
+| `npm run test:rf01` … `test:rf14` | Teste por requisito funcional |
+| `npm run test:all` | Suite RF01–RF14 (servidor activo) |
 
 ## Arranque em desenvolvimento
 
@@ -45,11 +48,13 @@ O servidor HTTP e o gateway WebSocket partilham a mesma porta (`attachLiveGatewa
 
 | Prefixo | Ficheiro | Notas |
 |---------|----------|-------|
+| `/api` | `controllers/api.controller.ts` | Índice REST (RF14) |
 | `/api/health` | `routes/health.routes.ts` | Estado da API e BD |
 | `/api/auth` | `routes/auth.routes.ts` | Registo, login, perfil, forgot/reset password |
 | `/api/podcasts` | `routes/podcast.routes.ts` | CRUD + upload; `POST` exige `requireCreator` |
 | `/api/stream` | `routes/stream.routes.ts` | Stream de áudio (`?token=` suportado) |
 | `/api/live` | `routes/live.routes.ts` | Sessões WebSocket activas (memória) |
+| `/api/categories` | `routes/categories.routes.ts` | `GET /public` e listagem autenticada |
 | `/api/presence` | `routes/presence.routes.ts` | Heartbeat, online |
 | `/api/admin` | `routes/admin.routes.ts` | CRUD admin |
 | `ws://host/live` | `live/live.gateway.ts` | Broadcast e listeners em tempo real |
@@ -64,7 +69,7 @@ Documentação completa: [DOCUMENTATION.md](../DOCUMENTATION.md).
 |------------|-----|
 | `requireAuth` | JWT válido |
 | `requireAdmin` | `role = admin` (validado na BD) |
-| `requireCreator` | `role = creator` ou `admin` |
+| `requireCreator` | `role = creator` apenas (Task 9 — admin não publica) |
 | `requireStreamAuth` | Token no header ou query (player) |
 | `uploadPodcast` | Multipart para `POST /api/podcasts` |
 
@@ -74,7 +79,7 @@ Documentação completa: [DOCUMENTATION.md](../DOCUMENTATION.md).
 |-------|------------------|
 | `user` | Consumir conteúdo, assistir live |
 | `creator` | Publicar podcasts, transmitir ao vivo |
-| `admin` | Painel admin + permissões de criador |
+| `admin` | Painel admin — moderação e segurança (sem publicar conteúdo) |
 
 ## Estrutura `src/`
 

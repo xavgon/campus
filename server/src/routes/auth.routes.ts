@@ -8,9 +8,11 @@ export const authRouter = Router();
 
 authRouter.post('/register', asyncHandler(authController.register));
 authRouter.post('/login', asyncHandler(authController.login));
+authRouter.get('/access', requireAuth, asyncHandler(authController.getAccessInfo));
 authRouter.post('/forgot-password', asyncHandler(authController.forgotPassword));
 authRouter.post('/reset-password', asyncHandler(authController.resetPassword));
 authRouter.get('/profile', requireAuth, asyncHandler(authController.getProfile));
+authRouter.get('/activity', requireAuth, asyncHandler(authController.getActivity));
 authRouter.put('/profile', requireAuth, asyncHandler(authController.updateProfile));
 authRouter.put('/profile/photo', requireAuth, uploadAvatar, asyncHandler(authController.updateAvatar));
 authRouter.delete('/profile/photo', requireAuth, asyncHandler(authController.deleteAvatar));

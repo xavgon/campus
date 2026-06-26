@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthFormSkeleton } from '@/features/auth/components/AuthFormSkeleton';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from '@/features/auth/components/icons';
 import { DEFAULT_ADMIN_LOGIN, REMEMBER_EMAIL_KEY } from '@/features/auth/constants';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+import { getPostAuthPath } from '@/features/auth/utils/postAuthRedirect';
 import { useAuthForm } from '@/features/auth/hooks/useAuthForm';
 import {
   hasLoginFieldErrors,
@@ -21,8 +22,10 @@ import { ERROR_TITLES, SESSION_COPY } from '@/shared/copy/campusMessages';
 export const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const redirectTarget = searchParams.get('redirect');
   const sessionExpired = (location.state as { reason?: string } | null)?.reason === 'session-expired';
-  const { login, isAuthenticated, isLoading } = useAuth();
+  const { login, user, isAuthenticated, isLoading } = useAuth();
   const [email, setEmail] = useState(() => {
     const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
     if (saved) return saved;
@@ -41,13 +44,18 @@ export const LoginPage = () => {
 
   // Hook must be called before any early return
   const { error, isSubmitting, handleSubmit, setError } = useAuthForm(async () => {
-    await login({ email: email.trim(), password });
+    const response = await login({ email: email.trim(), password });
     if (rememberMe) {
       localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim());
     } else {
       localStorage.removeItem(REMEMBER_EMAIL_KEY);
     }
-    void navigate('/dashboard');
+    const role = response?.data?.user?.role;
+    const safeRedirect =
+      redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')
+        ? redirectTarget
+        : null;
+    void navigate(safeRedirect ?? (role ? getPostAuthPath(role) : '/dashboard'));
   });
 
   const runValidation = (nextEmail = email, nextPassword = password) =>
@@ -62,8 +70,12 @@ export const LoginPage = () => {
     });
   };
 
-  if (!isLoading && isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+  if (!isLoading && isAuthenticated && user) {
+    const safeRedirect =
+      redirectTarget && redirectTarget.startsWith('/') && !redirectTarget.startsWith('//')
+        ? redirectTarget
+        : getPostAuthPath(user.role);
+    return <Navigate to={safeRedirect} replace />;
   }
 
   const onFormSubmit = (event: FormEvent) => {
@@ -92,8 +104,8 @@ export const LoginPage = () => {
     return <AuthFormSkeleton />;
   }
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated && user) {
+    return <Navigate to={getPostAuthPath(user.role)} replace />;
   }
 
   return (

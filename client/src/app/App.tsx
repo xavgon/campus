@@ -9,12 +9,17 @@ import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
 import { ExplorePage } from '@/pages/explore/ExplorePage';
+import { PublicExploreDetailPage } from '@/pages/explore/PublicExploreDetailPage';
+import { UserManualPage } from '@/pages/help/UserManualPage';
 import { HomePage } from '@/pages/home/HomePage';
 import { PodcastNewPage } from '@/pages/podcasts/PodcastNewPage';
 import { PodcastDetailPage } from '@/pages/podcasts/PodcastDetailPage';
 import { PodcastsPage } from '@/pages/podcasts/PodcastsPage';
 import {
   AdminLogsPage,
+  AdminCertsPage,
+  AdminAllowlistPage,
+  AdminPiracyPage,
   AdminNotificationsPage,
   AdminOverviewPage,
   AdminPostsPage,
@@ -38,6 +43,8 @@ const AppRoutes = () => (
     <Route element={<MarketingLayout />}>
       <Route path="/" element={IS_ELECTRON ? <ElectronRootRedirect /> : <HomePage />} />
       <Route path="/explorar" element={<ExplorePage />} />
+      <Route path="/explorar/:id" element={<PublicExploreDetailPage />} />
+      <Route path="/ajuda" element={<UserManualPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -65,6 +72,9 @@ const AppRoutes = () => (
             <Route path="/admin/transmissions" element={<AdminTransmissionsPage />} />
             <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
             <Route path="/admin/logs" element={<AdminLogsPage />} />
+            <Route path="/admin/certs" element={<AdminCertsPage />} />
+            <Route path="/admin/allowlist" element={<AdminAllowlistPage />} />
+            <Route path="/admin/piracy" element={<AdminPiracyPage />} />
           </Route>
         </Route>
       </Route>
