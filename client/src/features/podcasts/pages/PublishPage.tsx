@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthSubmitButton } from '@/features/auth/components/AuthSubmitButton';
-import { AuthorCertBadge } from '@/features/podcasts/components/AuthorCertBadge';
 import { FileDropzone } from '@/features/podcasts/components/FileDropzone';
 import { UploadProgressBar } from '@/features/podcasts/components/UploadProgressBar';
 import {

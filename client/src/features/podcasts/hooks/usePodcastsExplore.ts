@@ -27,7 +27,7 @@ export const usePodcastsExplore = () => {
 
     const load = async () => {
       try {
-        const items = await fetchPublicPodcasts({
+        const { podcasts: items } = await fetchPublicPodcasts({
           search: debouncedSearch,
           categoryId: filters.categoryId,
         });

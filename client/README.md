@@ -2,10 +2,14 @@
 
 Interface **React 19 + TypeScript + Vite 8 + Tailwind CSS 4 + React Router 7**, com build **Electron** opcional. Design system amarelo/preto/prata, cantos retos.
 
-## Requisitos
+## Instalação
 
-- Node.js 20+
-- API CAMPUS a correr (`server/`) — ver [README](../README.md)
+```bash
+cp .env.example .env
+npm install
+```
+
+Requisitos: Node.js 20+ e API CAMPUS a correr — ver [README raiz](../README.md#instalação).
 
 ## Configuração
 
@@ -20,6 +24,16 @@ npm run dev
 | `VITE_API_URL` | Base da API (ex.: `http://localhost:3001/api`) |
 
 A URL WebSocket live é derivada automaticamente (`http` → `ws`, sem sufixo `/api`).
+
+## Execução
+
+```bash
+npm run dev              # web — http://localhost:5173
+npm run electron:dev     # desktop (não correr dev em paralelo na :5173)
+npm run electron:pack    # portable → release/win-unpacked/CAMPUS.exe
+npm run electron:dist    # instalador → release/CAMPUS Setup 1.0.0.exe
+npm run build            # produção
+```
 
 ## Scripts
 
@@ -44,6 +58,7 @@ A URL WebSocket live é derivada automaticamente (`http` → `ws`, sem sufixo `/
 |------|--------|
 | `/` | Home (web) · redirect em Electron |
 | `/explorar` | Catálogo público (API `/podcasts/public`) |
+| `/ajuda` | Manual de utilizador |
 | `/login` | Login |
 | `/register` | Registo |
 | `/reset-password` | Nova password (`?token=`) |

@@ -84,11 +84,25 @@ if (builder.status !== 0) {
   process.exit(builder.status ?? 1);
 }
 
+// electron-builder com --prepackaged pode deixar win-unpacked sem CAMPUS.exe — repack
+console.log('[electron:dist] A restaurar pasta portable (CAMPUS.exe)…');
+const repack = spawnSync('node', ['./scripts/electron-pack-manual.cjs'], {
+  stdio: 'inherit',
+  cwd: clientRoot,
+});
+
+if (repack.status !== 0) {
+  console.error('[electron:dist] Falha ao restaurar portable.');
+  process.exit(repack.status ?? 1);
+}
+
+const portableExe = path.join(unpackedDir, 'CAMPUS.exe');
+
 if (fs.existsSync(setupExe)) {
   const stat = fs.statSync(setupExe);
   console.log('\n✓ Instalador:', setupExe);
   console.log('  Data:', stat.mtime.toLocaleString('pt-PT'));
-  console.log('\n✓ App portable (sem instalador):', campusExe);
+  console.log('\n✓ App portable (sem instalador):', portableExe);
 } else {
-  console.log('\n✓ App portable:', campusExe);
+  console.log('\n✓ App portable:', portableExe);
 }

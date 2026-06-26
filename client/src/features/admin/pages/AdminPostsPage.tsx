@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { AdminDataTable } from '@/features/admin/components/AdminDataTable';
 import { AdminFeedback } from '@/features/admin/components/AdminFeedback';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
-import { RoleBadge } from '@/features/admin/components/RoleBadge';
 import { adminSelectClass } from '@/features/admin/components/adminFormStyles';
 import { useAdminLookups } from '@/features/admin/hooks/useAdminLookups';
 import {

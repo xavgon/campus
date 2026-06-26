@@ -25,13 +25,16 @@ const apiTarget = hasServerTls ? 'https://localhost:3001' : 'http://localhost:30
 
 // Opções de mTLS para o proxy: envia certificado de cliente ao servidor
 const proxyCertOptions = hasProxyCert
-  ? { key: fs.readFileSync(proxyCertKey), cert: fs.readFileSync(proxyCertCrt) }
+  ? {
+      key: fs.readFileSync(proxyCertKey, 'utf8'),
+      cert: fs.readFileSync(proxyCertCrt, 'utf8'),
+    }
   : {};
 
 // Task 1 — verificar servidor contra CA-CAMPUS (não usar secure: false em produção)
 const proxyTlsOptions =
   hasServerTls && hasCampusCa
-    ? { secure: true, ca: fs.readFileSync(campusCaCrt) }
+    ? { secure: true, ca: fs.readFileSync(campusCaCrt, 'utf8') }
     : { secure: false };
 
 /** Vite injecta crossorigin nos assets; com file:// no Electron o bundle não carrega. */
